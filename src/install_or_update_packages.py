@@ -36,4 +36,4 @@ def install_or_update_packages():
 
 
 # Install or update unpinned libraries
-install_or_update_packages()
+# install_or_update_packages()
