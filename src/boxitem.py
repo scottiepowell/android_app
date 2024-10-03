@@ -1,6 +1,5 @@
-from models import BoxItem as BoxItemModel
+from src.models import BoxItemModel as BoxItemModel
 from sqlalchemy.orm import Session
-
 
 class BoxItem:
     def __init__(self, box_id, item_height, item_length, item_weight, item_location, item_description=None,
@@ -28,6 +27,14 @@ class BoxItem:
             item_picture=self.item_picture,
             item_user_defined_tags=self.item_user_defined_tags
         )
+
+    @staticmethod
+    def find_boxitem(session: Session, item_location="Top Shelf", item_weight=None):
+        """Find box items by location or weight."""
+        query = session.query(BoxItemModel).filter(BoxItemModel.item_location.ilike(f"%{item_location}%"))
+        if item_weight:
+            query = query.filter(BoxItemModel.item_weight == item_weight)
+        return query.all()
 
     def add_item(self, session: Session):
         """Add this item to the box in the database."""

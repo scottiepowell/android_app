@@ -1,4 +1,5 @@
 neuralrandom-0.1-arm64-v8a_armeabi-v7a-debug.apk
 src/__pycache__/
 src/whats_in_the_box.db
+**/__pycache__/
 tests/unit/__pycache__/

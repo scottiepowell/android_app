@@ -1,10 +1,8 @@
+from src.base import Base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
 
-Base = declarative_base()
-
-class Box(Base):
+class BoxModel(Base):
     __tablename__ = 'boxes'
 
     id = Column(Integer, primary_key=True)
@@ -17,10 +15,10 @@ class Box(Base):
     box_user_defined_tags = Column(String, nullable=True)
     box_description = Column(String, nullable=True)
 
-    items = relationship("BoxItem", back_populates="box")
+    items = relationship("BoxItemModel", back_populates="box", cascade="all, delete-orphan")
 
 
-class BoxItem(Base):
+class BoxItemModel(Base):
     __tablename__ = 'box_items'
 
     id = Column(Integer, primary_key=True)
@@ -33,4 +31,4 @@ class BoxItem(Base):
     item_user_defined_tags = Column(String, nullable=True)  # Tags as a comma-separated string
     item_description = Column(String, nullable=True)
 
-    box = relationship("Box", back_populates="items")
+    box = relationship("BoxModel", back_populates="items")

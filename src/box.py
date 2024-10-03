@@ -2,9 +2,8 @@
 import random
 import string
 import random
-from models import Box as BoxModel
+from src.models import BoxModel
 from sqlalchemy.orm import Session
-
 
 class Box:
     def __init__(self, box_height, box_length, box_weight, box_location, box_description=None, box_picture=None,
@@ -24,6 +23,14 @@ class Box:
         """Generate a random QR code consisting of uppercase letters and digits."""
         characters = string.ascii_uppercase + string.digits
         return ''.join(random.choice(characters) for _ in range(length))
+
+    @staticmethod
+    def find_box(session: Session, box_location="Warehouse Test", box_weight=None):
+        """Find boxes by location or weight."""
+        query = session.query(BoxModel).filter(BoxModel.box_location.ilike(f"%{box_location}%"))
+        if box_weight:
+            query = query.filter(BoxModel.box_weight == box_weight)
+        return query.all()
 
     def to_model(self):
         """Convert the business logic object to the database model for saving."""
