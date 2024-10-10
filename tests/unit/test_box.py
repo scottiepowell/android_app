@@ -1,5 +1,5 @@
 # tests/unit/test_box.py
-
+import sys
 from src.box import Box
 from src.boxitem import BoxItem
 from src.models import BoxModel, BoxItemModel
@@ -30,6 +30,7 @@ def generate_boxes_and_items(session: Session):
 
 def test_find_methods(session: Session):
     """Test find_box and find_boxitem methods."""
+    print(sys.path)
     # Generate test data
     generate_boxes_and_items(session)
 

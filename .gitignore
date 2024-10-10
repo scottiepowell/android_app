@@ -3,3 +3,5 @@ src/__pycache__/
 src/whats_in_the_box.db
 **/__pycache__/
 tests/unit/__pycache__/
+../.idea/kivy.iml
+**/.idea/**

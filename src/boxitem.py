@@ -17,6 +17,7 @@ class BoxItem:
 
     def to_model(self):
         """Convert the business logic object to the database model for saving."""
+        print(f"BoxItem to_model called with box_id: {self.box_id}")
         return BoxItemModel(
             box_id=self.box_id,
             item_height=self.item_height,
@@ -37,20 +38,24 @@ class BoxItem:
         return query.all()
 
     def add_item(self, session: Session):
-        """Add this item to the box in the database."""
-        item_model = self.to_model()
-        session.add(item_model)
-        session.commit()
-        self.item_id = item_model.id  # Save the ID for future edits or deletions
-        return item_model
+         # noinspection PyBroadException
+        try:
+            """Add this item to the box in the database."""
+            item_model = self.to_model()
+            session.add(item_model)
+            session.commit()
+            self.item_id = item_model.id  # Save the ID for future edits or deletions
+            return item_model
+        except Exception as e:
+            session.rollback()
+            print(f"Error adding item: {e}")
+            raise
 
-    def edit_item(self, session: Session, **kwargs):
+    @classmethod
+    def edit_item(cls, session: Session, item_id: int, **kwargs):
         """Edit an existing item in the database."""
-        if not self.item_id:
-            raise ValueError("BoxItem ID is not set.")
-
         # Query by the item's primary key ID, not box_id
-        item_model = session.query(BoxItemModel).filter_by(id=self.item_id).first()
+        item_model = session.query(BoxItemModel).filter_by(id=item_id).first()
         if not item_model:
             raise ValueError("BoxItem not found.")
 

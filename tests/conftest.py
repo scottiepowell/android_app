@@ -1,10 +1,16 @@
 # tests/conftest.py
 import sys
+print(sys.path)
 import os
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 from src.models import Base
+
+# Make sure src is added to sys.path for pytest
+SRC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'))
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 @pytest.fixture(scope="function")
 def session():

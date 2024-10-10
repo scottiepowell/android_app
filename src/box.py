@@ -25,11 +25,15 @@ class Box:
         return ''.join(random.choice(characters) for _ in range(length))
 
     @staticmethod
-    def find_box(session: Session, box_location="Warehouse Test", box_weight=None):
+    def find_box(session: Session, box_location=None, box_weight=None):
         """Find boxes by location or weight."""
-        query = session.query(BoxModel).filter(BoxModel.box_location.ilike(f"%{box_location}%"))
+        query = session.query(BoxModel)
+
+        if box_location:
+            query = query.filter(BoxModel.box_location.ilike(f"%{box_location}%"))
         if box_weight:
             query = query.filter(BoxModel.box_weight == box_weight)
+
         return query.all()
 
     def to_model(self):
@@ -52,9 +56,10 @@ class Box:
         session.commit()
         return box_model
 
-    def edit_box(self, session: Session, **kwargs):
+    def edit_box(self, session: Session, box_id: int, **kwargs):
         """Edit an existing box in the database."""
-        box_model = session.query(BoxModel).filter_by(box_QRcode=self.box_QRcode).first()
+        box_model = session.query(BoxModel).filter_by(id=box_id).first()
+
         if not box_model:
             raise ValueError("Box not found.")
 
