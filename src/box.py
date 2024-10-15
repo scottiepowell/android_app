@@ -1,4 +1,4 @@
-# box.py
+# src/box.py
 import random
 import string
 import random
@@ -13,7 +13,7 @@ class Box:
         self.box_length = box_length
         self.box_weight = box_weight
         self.box_location = box_location
-        self.box_description = box_description
+        self.box_description = box_description or "this is a box"
         self.box_picture = box_picture
         self.box_user_defined_tags = box_user_defined_tags
         self.box_QRcode = box_QRcode or self.generate_random_qrcode()
