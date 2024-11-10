@@ -15,6 +15,30 @@
             on_press:
                 root.manager.current = 'find_box'
 
+        Button:
+            text: 'Edit Box'
+            size_hint_y: 0.5
+            on_press:
+                root.manager.current = 'edit_box'
+
+        Button:
+            text: 'Delete_Box'
+            size_hint_y: 0.5
+            on_press:
+                root.manager.current = 'delete_box'
+
+        Button:
+            text: 'Items in the Box'
+            size_hint_y: 0.5
+            on_press:
+                root.manager.current = 'box_items'
+
+        Button:
+            text: 'Exit'
+            size_hint_y: 0.5
+            on_press:
+                app.stop()
+
 <AddBoxScreen>:
     name: 'add_box'
     BoxLayout:
@@ -53,21 +77,12 @@
                 root.clear_inputs()
                 root.manager.current = 'main'
 
-<FindBoxScreen>:
-    name: 'find_box'
+<EditBoxScreen>:
+    name: 'edit_box'
     BoxLayout:
         orientation: 'vertical'
         spacing: 5
         padding: 10
-        TextInput:
-            id: box_location
-            hint_text: 'Enter Location to Find Boxes'
-            size_hint_y: 0.5
-        Button:
-            text: 'Find Boxes'
-            size_hint_y: 0.5
-            on_press:
-                root.find_boxes()
         TextInput:
             id: edit_box_id
             hint_text: 'Enter Box ID to Edit'
@@ -85,15 +100,28 @@
             size_hint_y: 0.5
             on_press:
                 root.edit_box()
-        TextInput:
-            id: delete_box_id
-            hint_text: 'Enter Box ID to Delete'
-            size_hint_y: 0.5
         Button:
-            text: 'Delete Box'
+            text: 'Back to Main Menu'
             size_hint_y: 0.5
             on_press:
-                root.delete_box()
+                root.clear_inputs()
+                root.manager.current = 'main'
+
+<FindBoxScreen>:
+    name: 'find_box'
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 5
+        padding: 10
+        TextInput:
+            id: box_location
+            hint_text: 'Enter Location to Find Boxes'
+            size_hint_y: 0.5
+        Button:
+            text: 'Find Boxes'
+            size_hint_y: 0.5
+            on_press:
+                root.find_boxes()
         BoxLayout:
             id: results_box
             orientation: 'vertical'
@@ -102,6 +130,96 @@
         Button:
             text: 'Back to Main Menu'
             size_hint_y: 0.5
+            on_press:
+                root.clear_results()
+                root.manager.current = 'main'
+<DeleteBoxScreen>:
+    name: 'delete_box'
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 5
+        padding: 10
+        TextInput:
+            id: delete_box_id
+            hint_text: 'Enter Box ID to Delete'
+            size_hint_y: 0.5
+        Button:
+            text: 'Delete Box'
+            size_hint_y: 0.5
+            on_press:
+                root.show_confirm_button()
+        Button:
+            id: confirm_delete_button
+            text: 'Confirm Delete'
+            size_hint_y: 0.5
+            opacity: 0  # Hide initially
+            disabled: True  # Disable initially
+            on_press:
+                root.delete_box()
+        Button:
+            text: 'Back to Main Menu'
+            size_hint_y: 0.5
+            on_press:
+                root.clear_inputs()
+                root.manager.current = 'main'
+
+<BoxItemsScreen>:
+    name: 'box_items'
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 2  # Reduce spacing between components
+        padding: 5  # Reduce padding around the screen
+
+        # Display boxes with items
+        Label:
+            text: 'Boxes with Items'
+            size_hint_y: None
+            height: 20  # Smaller label height for mobile
+        ScrollView:
+            size_hint_y: 0.25  # Compact height for boxes list
+            BoxLayout:
+                id: boxes_with_items_box
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+
+        # Input and Button to Find Items by Box ID
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 25  # Reduce height for compact input section
+            Label:
+                text: 'Enter Box ID'
+                size_hint_x: 0.4  # Compact label
+            TextInput:
+                id: box_id_input
+                multiline: False
+                hint_text: 'Box ID'
+                size_hint_x: 0.3
+        Button:
+            text: 'Find Items'
+            size_hint_y: None
+            height: 25  # Compact button height
+            on_press:
+                root.find_items_by_box_id()
+
+        # Display items for the selected Box ID
+        Label:
+            text: 'Items in Selected Box'
+            size_hint_y: None
+            height: 20  # Smaller label height for mobile
+        ScrollView:
+            size_hint_y: 0.25  # Compact height for items list
+            BoxLayout:
+                id: items_results_box
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+
+        Button:
+            text: 'Back to Main Menu'
+            size_hint_y: None
+            height: 25  # Compact button height for Back
             on_press:
                 root.clear_results()
                 root.manager.current = 'main'

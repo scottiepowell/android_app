@@ -38,7 +38,6 @@ class BoxItem:
         return query.all()
 
     def add_item(self, session: Session):
-         # noinspection PyBroadException
         try:
             """Add this item to the box in the database."""
             item_model = self.to_model()
