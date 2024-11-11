@@ -6,3 +6,7 @@ src/kivy_app/whats_in_the_box.db
 tests/unit/__pycache__/
 ../.idea/kivy.iml
 **/.idea/**
+compile_for_android/.buildozer/
+examples/.buildozer/
+examples/bin/
+examples/buildozer-env/
