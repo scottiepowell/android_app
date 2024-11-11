@@ -2,11 +2,6 @@
 import kivy
 kivy.logger.Logger.setLevel("DEBUG")
 
-import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from src.kivy_app.screens import MainMenuScreen, AddBoxScreen, FindBoxScreen, EditBoxScreen, DeleteBoxScreen, BoxItemsScreen
