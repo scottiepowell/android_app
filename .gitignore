@@ -1,4 +1,4 @@
-neuralrandom-0.1-arm64-v8a_armeabi-v7a-debug.apk
+OBneuralrandom-0.1-arm64-v8a_armeabi-v7a-debug.apk
 src/__pycache__/
 src/whats_in_the_box.db
 src/kivy_app/whats_in_the_box.db
@@ -10,3 +10,6 @@ compile_for_android/.buildozer/
 examples/.buildozer/
 examples/bin/
 examples/buildozer-env/
+.buildozer
+bin/
+examples/.buildozer
