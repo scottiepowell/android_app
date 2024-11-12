@@ -13,3 +13,5 @@ examples/buildozer-env/
 .buildozer
 bin/
 examples/.buildozer
+*.apk
+*.sh
