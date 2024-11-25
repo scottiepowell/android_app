@@ -15,3 +15,4 @@ bin/
 examples/.buildozer
 *.apk
 *.sh
+*.db

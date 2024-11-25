@@ -1,12 +1,15 @@
-# src/kivy_app/main.py
+# main.py
 import kivy
 kivy.logger.Logger.setLevel("DEBUG")
 
+from kivy.lang import Builder
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.logger import Logger
-from src.kivy_app.screens import MainMenuScreen, AddBoxScreen, FindBoxScreen, EditBoxScreen, DeleteBoxScreen, BoxItemsScreen
+from src.kivy_app.screens import MainMenuScreen, BoxesScreen, BoxItemsScreen
 from src.database import init_db
+
+Builder.load_file("src/kivy_app/box.kv")
 
 class BoxApp(App):
     def build(self):
@@ -16,10 +19,7 @@ class BoxApp(App):
         Logger.debug("BoxApp: Setting up ScreenManager with all screens...")
         sm = ScreenManager()
         sm.add_widget(MainMenuScreen(name="main"))
-        sm.add_widget(AddBoxScreen(name="add_box"))
-        sm.add_widget(FindBoxScreen(name="find_box"))
-        sm.add_widget(EditBoxScreen(name="edit_box"))
-        sm.add_widget(DeleteBoxScreen(name="delete_box"))
+        sm.add_widget(BoxesScreen(name="boxes"))
         sm.add_widget(BoxItemsScreen(name="box_items"))
         return sm
 

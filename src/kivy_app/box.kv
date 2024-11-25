@@ -5,27 +5,10 @@
         spacing: 20
         padding: 50
         Button:
-            text: 'Add Box'
+            text: 'Boxes'
             size_hint_y: 0.5
             on_press:
-                root.manager.current = 'add_box'
-        Button:
-            text: 'Find Box'
-            size_hint_y: 0.5
-            on_press:
-                root.manager.current = 'find_box'
-
-        Button:
-            text: 'Edit Box'
-            size_hint_y: 0.5
-            on_press:
-                root.manager.current = 'edit_box'
-
-        Button:
-            text: 'Delete_Box'
-            size_hint_y: 0.5
-            on_press:
-                root.manager.current = 'delete_box'
+                root.manager.current = 'boxes'
 
         Button:
             text: 'Items in the Box'
@@ -39,128 +22,33 @@
             on_press:
                 app.stop()
 
-<AddBoxScreen>:
-    name: 'add_box'
+<BoxesScreen>:
+    name: 'boxes'
     BoxLayout:
         orientation: 'vertical'
-        spacing: 5
+        spacing: 10
         padding: 10
-        TextInput:
-            id: box_height
-            hint_text: 'Enter Box Height'
-            size_hint_y: 0.5
-        TextInput:
-            id: box_length
-            hint_text: 'Enter Box Length'
-            size_hint_y: 0.5
-        TextInput:
-            id: box_weight
-            hint_text: 'Enter Box Weight'
-            size_hint_y: 0.5
-        TextInput:
-            id: box_location
-            hint_text: 'Enter Box Location'
-            size_hint_y: 0.5
-        TextInput:
-            id: box_description
-            hint_text: 'Enter Box Description'
-            size_hint_y: 0.5
+
         Button:
             text: 'Add Box'
-            size_hint_y: 0.5
-            on_press:
-                root.add_box()
-        Button:
-            text: 'Back to Main Menu'
-            size_hint_y: 0.5
-            on_press:
-                root.clear_inputs()
-                root.manager.current = 'main'
-
-<EditBoxScreen>:
-    name: 'edit_box'
-    BoxLayout:
-        orientation: 'vertical'
-        spacing: 5
-        padding: 10
-        TextInput:
-            id: edit_box_id
-            hint_text: 'Enter Box ID to Edit'
-            size_hint_y: 0.5
-        TextInput:
-            id: edit_box_location
-            hint_text: 'New Location'
-            size_hint_y: 0.5
-        TextInput:
-            id: edit_box_description
-            hint_text: 'New Description'
-            size_hint_y: 0.5
-        Button:
-            text: 'Edit Box'
-            size_hint_y: 0.5
-            on_press:
-                root.edit_box()
-        Button:
-            text: 'Back to Main Menu'
-            size_hint_y: 0.5
-            on_press:
-                root.clear_inputs()
-                root.manager.current = 'main'
-
-<FindBoxScreen>:
-    name: 'find_box'
-    BoxLayout:
-        orientation: 'vertical'
-        spacing: 5
-        padding: 10
-        TextInput:
-            id: box_location
-            hint_text: 'Enter Location to Find Boxes'
-            size_hint_y: 0.5
-        Button:
-            text: 'Find Boxes'
-            size_hint_y: 0.5
-            on_press:
-                root.find_boxes()
-        BoxLayout:
-            id: results_box
-            orientation: 'vertical'
             size_hint_y: None
-            height: self.minimum_height
+            height: 40
+            on_press:
+                root.show_add_box_popup()
+
+        ScrollView:
+            size_hint_y: 0.8
+            BoxLayout:
+                id: boxes_results_box
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+
         Button:
             text: 'Back to Main Menu'
-            size_hint_y: 0.5
+            size_hint_y: None
+            height: 40
             on_press:
-                root.clear_results()
-                root.manager.current = 'main'
-<DeleteBoxScreen>:
-    name: 'delete_box'
-    BoxLayout:
-        orientation: 'vertical'
-        spacing: 5
-        padding: 10
-        TextInput:
-            id: delete_box_id
-            hint_text: 'Enter Box ID to Delete'
-            size_hint_y: 0.5
-        Button:
-            text: 'Delete Box'
-            size_hint_y: 0.5
-            on_press:
-                root.show_confirm_button()
-        Button:
-            id: confirm_delete_button
-            text: 'Confirm Delete'
-            size_hint_y: 0.5
-            opacity: 0  # Hide initially
-            disabled: True  # Disable initially
-            on_press:
-                root.delete_box()
-        Button:
-            text: 'Back to Main Menu'
-            size_hint_y: 0.5
-            on_press:
-                root.clear_inputs()
                 root.manager.current = 'main'
 
 <BoxItemsScreen>:
