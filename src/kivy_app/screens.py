@@ -218,7 +218,8 @@ class BoxItemsScreen(Screen):
             Logger.debug(f"BoxItemsScreen: Found {len(boxes)} total boxes")
 
             if boxes:
-                grid = GridLayout(cols=6, size_hint_y=None, row_default_height=40)  # Increased cols to 6 for spacer
+                # Adjusted the cols for headers and actions
+                grid = GridLayout(cols=6, size_hint_y=None, row_default_height=50, spacing=5)
                 grid.bind(minimum_height=grid.setter('height'))
 
                 # Header row
@@ -226,7 +227,7 @@ class BoxItemsScreen(Screen):
                 grid.add_widget(Label(text="Location"))
                 grid.add_widget(Label(text="Weight"))
                 grid.add_widget(Label(text="Description"))
-                grid.add_widget(Label(text=""))  # Spacer column
+                grid.add_widget(Label(text="Spacer"))  # Spacer column
                 grid.add_widget(Label(text="Actions"))
 
                 for box in boxes:
@@ -240,16 +241,15 @@ class BoxItemsScreen(Screen):
                     grid.add_widget(Label(text=box.box_description or ""))
 
                     # Add Spacer
-                    grid.add_widget(Label(text=" "))  # Add spacer for better alignment
+                    grid.add_widget(Label(text=" "))  # Spacer for alignment
 
-                    # Add Actions column
-                    actions_layout = BoxLayout(orientation="horizontal", spacing=10, size_hint_x=None, width=150)
+                    # Actions column
+                    actions_layout = BoxLayout(orientation="horizontal", spacing=5, size_hint_x=1)
 
                     # "Edit" button
                     edit_button = Button(
                         text="Edit",
-                        size_hint_x=None,
-                        width=50,
+                        size_hint_x=0.3,
                         on_press=lambda btn, b=box: self.show_edit_popup(b)
                     )
                     actions_layout.add_widget(edit_button)
@@ -257,8 +257,7 @@ class BoxItemsScreen(Screen):
                     # "Delete" button
                     delete_button = Button(
                         text="Delete",
-                        size_hint_x=None,
-                        width=50,
+                        size_hint_x=0.3,
                         background_color=(1, 0, 0, 1),
                         on_press=lambda btn, b=box: self.show_delete_confirmation_popup(b)
                     )
@@ -267,14 +266,14 @@ class BoxItemsScreen(Screen):
                     # "Add" button
                     add_button = Button(
                         text="Add",
-                        size_hint_x=None,
-                        width=50,
-                        background_color=(0, 1, 0, 1),  # Green button
+                        size_hint_x=0.3,
+                        background_color=(0, 1, 0, 1),
                         on_press=lambda btn, b=box: self.show_add_item_popup(b)
                     )
                     actions_layout.add_widget(add_button)
 
-                    grid.add_widget(actions_layout)  # Add the entire actions layout to the grid
+                    # Add actions layout to the grid
+                    grid.add_widget(actions_layout)
 
                 # Scrollable container
                 scrollview = ScrollView(size_hint=(1, None), size=(self.width, 300))
