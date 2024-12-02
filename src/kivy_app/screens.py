@@ -346,7 +346,16 @@ class BoxItemsScreen(Screen):
             session.close()
 
     def add_item_to_box(self, box, height, length, weight, location, description):
-        Logger.debug(f"BoxItemsScreen: add_item_to_box() called for Box ID {box.id}")
+        Logger.debug(f"BoxItemsScreen: Inputs received - height={height}, length={length}, weight={weight}, location={location}, description={description}")
+
+        try:
+            height = float(height) if height else 0.0
+            length = float(length) if length else 0.0
+            weight = float(weight) if weight else 0.0
+        except ValueError as e:
+            Logger.error(f"BoxItemsScreen: Invalid input for item dimensions - {e}")
+            return  # Exit early if input is invalid
+
         session = SessionLocal()
         try:
             new_item = BoxItem(
