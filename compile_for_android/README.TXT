@@ -17,7 +17,16 @@ buildozer init
 # this will build a buildozer.spec template for the android app to modify
 nano buildozer.spec
 
+# environment activation
+source /mnt/storage/android_app/examples/buildozer-env/bin/activate
+
+#verify environment
+which python
+echo $VIRTUAL_ENV
+
 # compile the buildozer.spec file
 buildozer -v android debug
+
+# use the copy script on windows to copy the .apk file into the release dir 
 
 
