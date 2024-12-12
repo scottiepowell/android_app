@@ -16,3 +16,4 @@ examples/.buildozer
 *.apk
 *.sh
 *.db
+.idea/*
