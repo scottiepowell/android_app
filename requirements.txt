@@ -2,3 +2,4 @@ sqlalchemy
 pytest
 click
 kivy
+tabulate

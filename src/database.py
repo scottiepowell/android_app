@@ -1,27 +1,12 @@
 # src/database.py
+
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.base import Base
-from kivy.logger import Logger
-import src.models  # Import models so that SQLAlchemy knows about them
-
-# Determine the database path
-def get_database_path():
-    from kivy.utils import platform
-    if platform == 'android':
-        try:
-            # For Android, use the app's user data directory
-            from android.storage import app_storage_path
-            app_dir = app_storage_path()
-        except ImportError:
-            Logger.error("database.py: Failed to import android.storage. Is 'android' in your requirements?")
-            raise RuntimeError("Running on a non-Android platform but tried to use Android-specific storage.")
-        database_file = os.path.join(app_dir, 'whats_in_the_box.db')
-    else:
-        # For desktop platforms, use the current directory
-        database_file = os.path.join(os.getcwd(), 'whats_in_the_box.db')
-    return database_file
+from src.utils.platform_utils import get_database_path
+import logging
+Logger = logging.getLogger(__name__)
 
 # Create the engine and session factory
 database_file = get_database_path()

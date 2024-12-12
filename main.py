@@ -6,7 +6,9 @@ from kivy.lang import Builder
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.logger import Logger
-from src.kivy_app.screens import MainMenuScreen, BoxesScreen, BoxItemsScreen
+from src.kivy_app.screens.main_menu_screen import MainMenuScreen
+from src.kivy_app.screens.boxes_screen import BoxesScreen
+from src.kivy_app.screens.box_items_screen import BoxItemsScreen
 from src.database import init_db
 
 Builder.load_file("src/kivy_app/box.kv")

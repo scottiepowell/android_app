@@ -26,11 +26,16 @@ def box(description, height, length, weight, location, picture, tags):
             box_length=length,
             box_weight=weight,
             box_location=location,
-            box_picture=picture,
             box_user_defined_tags=tags
         )
         box_model = box.add_box(session)
+
+        if picture:
+            box.add_picture(session, box_model.id, picture)
+
         click.echo(f'Added box with ID: {box_model.id}')
+    except Exception as e:
+        click.echo(f"Error: {e}")
     finally:
         session.close()
 
@@ -47,15 +52,22 @@ def item(box_id, description, location, height, length, weight, picture, tags):
     """Add a new item to a box."""
     session = SessionLocal()
     try:
-        item = BoxItem(
+        box_item = BoxItem(
             box_id=box_id,
             item_height=height,
             item_length=length,
             item_weight=weight,
             item_location=location,
-            item_description=description
+            item_description=description,
+            item_user_defined_tags=tags
         )
-        item_model = item.add_item(session)
+        item_model = box_item.add_item(session)
+
+        if picture:
+            box_item.add_picture(session, picture)
+
         click.echo(f'Added item with ID: {item_model.id} to box ID: {box_id}')
+    except Exception as e:
+        click.echo(f"Error: {e}")
     finally:
         session.close()

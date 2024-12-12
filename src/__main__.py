@@ -3,11 +3,15 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import click
+import logging
 from commands.find import find
 from commands.add import add
 from commands.edit import edit
 from commands.delete import delete
 from database import init_db
+
+logging.basicConfig(level=logging.DEBUG)
+Logger = logging.getLogger(__name__)
 
 @click.group()
 def cli():
