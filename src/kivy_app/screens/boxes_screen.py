@@ -42,9 +42,9 @@ class BoxesScreen(Screen):
 
                 for box in boxes:
                     grid.add_widget(Label(text=box.alias))
-                    grid.add_widget(Label(text=box.box_location))
+                    grid.add_widget(Label(text=box.box_location or "N/A"))
                     grid.add_widget(Label(text=str(box.box_weight) if box.box_weight else "N/A"))
-                    grid.add_widget(Label(text=box.box_description or ""))
+                    grid.add_widget(Label(text=box.box_description or "N/A"))
 
                     # Edit and Delete buttons
                     actions = BoxLayout(orientation='horizontal', size_hint_y=None, height=30)
@@ -252,6 +252,46 @@ class BoxesScreen(Screen):
             Logger.info(f"BoxesScreen: Box with alias {box.alias} updated successfully.")
         except Exception as e:
             Logger.error(f"BoxesScreen: Failed to update box - {e}")
+            session.rollback()
+        finally:
+            session.close()
+        self.display_boxes()
+
+    def show_delete_popup(self, box):
+        Logger.debug(f"BoxesScreen: show_delete_popup() called for Alias {box.alias}")
+
+        # Confirmation popup layout
+        popup_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+        popup_layout.add_widget(Label(text=f"Are you sure you want to delete the box '{box.alias}'?"))
+
+        # Buttons for Yes/No
+        button_layout = BoxLayout(size_hint_y=None, height=40, spacing=10)
+
+        yes_button = Button(text="Yes")
+        yes_button.bind(on_press=lambda _: self.delete_box(box))
+        yes_button.bind(on_press=lambda _: popup.dismiss())  # Close popup on Yes
+        button_layout.add_widget(yes_button)
+
+        no_button = Button(text="No")
+        no_button.bind(on_press=lambda _: popup.dismiss())  # Close popup on No
+        button_layout.add_widget(no_button)
+
+        popup_layout.add_widget(button_layout)
+
+        # Create and display popup
+        popup = Popup(title="Confirm Delete", content=popup_layout, size_hint=(0.6, 0.4))
+        popup.open()
+
+    def delete_box(self, box):
+        Logger.debug(f"BoxesScreen: delete_box() called for Alias {box.alias}")
+        session = SessionLocal()
+        try:
+            # Delete the box from the database
+            session.delete(box)
+            session.commit()
+            Logger.info(f"BoxesScreen: Box with alias '{box.alias}' deleted successfully.")
+        except Exception as e:
+            Logger.error(f"BoxesScreen: Failed to delete box - {e}")
             session.rollback()
         finally:
             session.close()
