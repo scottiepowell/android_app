@@ -1,38 +1,80 @@
-from PIL import Image
+from PIL import Image, ExifTags
+from pathlib import Path
 import io
 import os
 import logging
+
+from kivy.graphics.texture import Texture
 
 logger = logging.getLogger(__name__)
 
 
 class ImageHandler:
     @staticmethod
+    def resolve_asset(relative_path):
+        """Load an asset relative to the project's root directory and return its binary content."""
+        try:
+            # Determine the base path (project root)
+            base_path = Path(__file__).resolve().parents[1]  # Navigate to the project root directory
+            asset_path = base_path / relative_path
+
+            # Log for debugging
+            logger.debug(f"Resolving asset path: Base path: {base_path}, Asset path: {asset_path}")
+
+            # Ensure the path exists
+            if not asset_path.is_file():
+                logger.error(f"Asset not found: {asset_path}")
+                raise FileNotFoundError(f"Asset not found: {asset_path}")
+
+            # Load and return the binary content of the file
+            with asset_path.open("rb") as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Error resolving or loading asset: {e}")
+            raise
+
+    @staticmethod
     def load_image(file_path):
-        """Load an image from a file and return it as binary data."""
-        logger.debug(f"Attempting to load image from: {file_path}")
+        """Load an image from a file, fix orientation, and return binary data."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
         with open(file_path, 'rb') as f:
             image_data = f.read()
-        logger.debug(f"Loaded image data size: {len(image_data)} bytes")
-        return image_data
+        # Fix orientation
+        image = Image.open(io.BytesIO(image_data))
+        image = ImageHandler.fix_orientation(image)
+        output = io.BytesIO()
+        image.save(output, format="JPEG")
+        return output.getvalue()
 
     @staticmethod
     def create_thumbnail(image_data, max_size=(100, 100)):
         """Create a thumbnail for the image."""
-        logger.debug(f"Creating thumbnail for image of size: {len(image_data)} bytes")
+        image = Image.open(io.BytesIO(image_data))
+        image = ImageHandler.fix_orientation(image)
+        image.thumbnail(max_size)
+        output = io.BytesIO()
+        image.save(output, format="JPEG")
+        return output.getvalue()
+
+    @staticmethod
+    def fix_orientation(image):
+        """Fix image orientation using EXIF data."""
         try:
-            image = Image.open(io.BytesIO(image_data))
-            image.thumbnail(max_size)
-            output = io.BytesIO()
-            image.save(output, format="JPEG")
-            thumbnail_data = output.getvalue()
-            logger.debug(f"Thumbnail created. Size: {len(thumbnail_data)} bytes")
-            return thumbnail_data
-        except Exception as e:
-            logger.error(f"Error creating thumbnail: {e}")
-            raise
+            for orientation in ExifTags.TAGS.keys():
+                if ExifTags.TAGS[orientation] == 'Orientation':
+                    break
+            exif = dict(image._getexif().items())
+            if exif[orientation] == 3:
+                image = image.rotate(180, expand=True)
+            elif exif[orientation] == 6:
+                image = image.rotate(270, expand=True)
+            elif exif[orientation] == 8:
+                image = image.rotate(90, expand=True)
+        except (AttributeError, KeyError, IndexError):
+            # No EXIF data or orientation tag
+            pass
+        return image
 
     @staticmethod
     def save_to_database(session, model, field, data):
@@ -52,3 +94,14 @@ class ImageHandler:
             logger.debug(f"Verified image saved. Field '{field}' size: {len(getattr(result, field))} bytes")
         else:
             logger.error(f"Image data not found in database field '{field}' for model ID {model.id}")
+
+    @staticmethod
+    def bytes_to_texture(image_data):
+        """Convert image bytes to Kivy Texture."""
+        image = Image.open(io.BytesIO(image_data))
+        image = image.convert("RGBA")
+        data = image.tobytes()
+        texture = Texture.create(size=image.size)
+        texture.blit_buffer(data, colorfmt="rgba", bufferfmt="ubyte")
+        texture.flip_vertical()  # Ensure correct orientation
+        return texture
