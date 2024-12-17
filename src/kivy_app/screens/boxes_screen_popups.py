@@ -1,3 +1,5 @@
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -221,7 +223,7 @@ def show_edit_popup(screen, box):
 
                 preview_buttons = BoxLayout(size_hint_y=None, height=40, spacing=10)
                 save_button = Button(text="Save", on_press=confirm_image)
-                cancel_button = Button(text="Cancel", on_press=cancel_image)
+                cancel_button = Button(text="Return", on_press=cancel_image)
                 preview_buttons.add_widget(save_button)
                 preview_buttons.add_widget(cancel_button)
 
@@ -231,7 +233,7 @@ def show_edit_popup(screen, box):
 
         filechooser_buttons = BoxLayout(size_hint=(1, 0.1), spacing=10)
         confirm_button = Button(text="Select", on_press=show_image_preview)
-        cancel_button = Button(text="Cancel", on_press=lambda _: filechooser_popup.dismiss())
+        cancel_button = Button(text="Return", on_press=lambda _: filechooser_popup.dismiss())
         filechooser_buttons.add_widget(confirm_button)
         filechooser_buttons.add_widget(cancel_button)
 
@@ -289,9 +291,107 @@ def show_edit_popup(screen, box):
     save_button = Button(text="Save", on_press=save_changes)
     button_layout.add_widget(save_button)
 
-    cancel_button = Button(text="Cancel", on_press=lambda _: popup.dismiss())
+    cancel_button = Button(text="Return", on_press=lambda _: popup.dismiss())
     button_layout.add_widget(cancel_button)
 
     popup_layout.add_widget(button_layout)
     popup = Popup(title=f"Edit Box {box.alias}", content=popup_layout, size_hint=(0.8, 0.8))
+    popup.open()
+
+def show_view_popup(box, boxes, current_index, screen):
+    Logger.debug(f"BoxesScreen: show_view_popup() called for Alias {box.alias}")
+
+    # Navigation logic
+    def navigate_box(direction):
+        new_index = current_index + direction
+        if 0 <= new_index < len(boxes):
+            popup.dismiss()
+            show_view_popup(boxes[new_index], boxes, new_index, screen)
+
+    # Main popup layout
+    popup_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+
+    # ScrollView for vertical scrolling
+    scroll_view = ScrollView(size_hint=(1, 1))
+    content_layout = BoxLayout(orientation='vertical', spacing=10, size_hint_y=None)
+    content_layout.bind(minimum_height=content_layout.setter('height'))
+
+    # 1. Display the picture at the top
+    if box.box_picture:
+        try:
+            picture_data = box.box_picture
+            picture_texture = ImageHandler.bytes_to_texture(picture_data)
+            picture = Image(texture=picture_texture, size_hint=(1, None), height=400, allow_stretch=True,
+                            keep_ratio=True)
+        except Exception as e:
+            Logger.error(f"Failed to load picture for box {box.alias}: {e}")
+            picture_texture = None
+    else:
+        # Use a placeholder full-sized image if no picture is available
+        try:
+            default_image_data = ImageHandler.resolve_asset("assets/na.jpeg")
+            resized_default_data = ImageHandler.resize_default_thumbnail(default_image_data, size=(400, 400))
+            picture_texture = ImageHandler.bytes_to_texture(resized_default_data)
+        except Exception as e:
+            Logger.error(f"Failed to load default placeholder image: {e}")
+            picture_texture = None
+
+    if picture_texture:
+        picture = Image(texture=picture_texture, size_hint=(1, None), height=400, allow_stretch=True, keep_ratio=True)
+        content_layout.add_widget(picture)
+    else:
+        content_layout.add_widget(Label(text="Picture Unavailable", size_hint_y=None, height=400))
+
+    # 2. Add fields in a GridLayout (3 fields per row)
+    grid = GridLayout(cols=3, spacing=10, size_hint_y=None, row_default_height=100)
+    grid.bind(minimum_height=grid.setter('height'))
+
+    fields = {
+        "Alias": box.alias,
+        "Description": box.box_description,
+        "Location": box.box_location,
+        "Height": f"{box.box_height} units" if box.box_height else "N/A",
+        "Weight": f"{box.box_weight} units" if box.box_weight else "N/A",
+        "Length": f"{box.box_length} units" if box.box_length else "N/A",
+        "User Tags": box.box_user_defined_tags or "N/A"
+    }
+
+    for field_name, field_value in fields.items():
+        field_label = Label(
+            text=f"[b]{field_name}:[/b] {field_value}",
+            markup=True,
+            halign="left",
+            valign="middle",
+            size_hint_x=1,  # Stretch labels evenly
+            size_hint_y=None,
+            text_size=(None, None)  # Prevent truncation
+        )
+        field_label.bind(size=lambda label, size: setattr(label, "text_size", (label.width - 20, None)))
+        grid.add_widget(field_label)
+
+    content_layout.add_widget(grid)
+
+    # 3. Navigation buttons (Previous, Next, and Return)
+    nav_buttons_layout = BoxLayout(size_hint_y=None, height=40, spacing=10, padding=[10, 0])
+
+    prev_button = Button(text="Previous", size_hint=(0.3, None), height=40)
+    prev_button.bind(on_press=lambda _: navigate_box(-1))
+    prev_button.disabled = current_index == 0
+    nav_buttons_layout.add_widget(prev_button)
+
+    return_button = Button(text="Return", size_hint=(0.3, None), height=40)
+    return_button.bind(on_press=lambda _: popup.dismiss())
+    nav_buttons_layout.add_widget(return_button)
+
+    next_button = Button(text="Next", size_hint=(0.3, None), height=40)
+    next_button.bind(on_press=lambda _: navigate_box(1))
+    next_button.disabled = current_index == len(boxes) - 1
+    nav_buttons_layout.add_widget(next_button)
+
+    # Combine everything into the popup
+    scroll_view.add_widget(content_layout)
+    popup_layout.add_widget(scroll_view)
+    popup_layout.add_widget(nav_buttons_layout)
+
+    popup = Popup(title=f"View Box: {box.alias}", content=popup_layout, size_hint=(0.9, 0.9))
     popup.open()

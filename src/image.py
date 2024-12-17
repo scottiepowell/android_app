@@ -58,6 +58,19 @@ class ImageHandler:
         return output.getvalue()
 
     @staticmethod
+    def resize_default_thumbnail(default_image_data, size=(100, 100)):
+        """Resize the default 'N/A' image to match the size of other thumbnails."""
+        try:
+            image = Image.open(io.BytesIO(default_image_data))
+            image = image.resize(size, Image.Resampling.LANCZOS)
+            output = io.BytesIO()
+            image.save(output, format="JPEG")
+            return output.getvalue()
+        except Exception as e:
+            logger.error(f"Error resizing default thumbnail: {e}")
+            raise
+
+    @staticmethod
     def fix_orientation(image):
         """Fix image orientation using EXIF data."""
         try:

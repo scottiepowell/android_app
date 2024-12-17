@@ -36,13 +36,15 @@
             on_press:
                 root.show_add_box_popup()
 
-        ScrollView:
-            size_hint_y: 0.8
-            BoxLayout:
-                id: boxes_results_box
-                orientation: 'vertical'
-                size_hint_y: None
-                height: self.minimum_height
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: 1  # Use all available space
+            ScrollView:
+                size_hint: (1, 1)  # Allow ScrollView to take all available space
+                BoxLayout:
+                    id: boxes_results_box
+                    orientation: 'vertical'
+                    size_hint_y: 1
 
         Button:
             text: 'Back to Main Menu'
