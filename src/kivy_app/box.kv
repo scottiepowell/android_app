@@ -17,6 +17,12 @@
                 root.manager.current = 'box_items'
 
         Button:
+            text: 'Boxes Test'
+            size_hint_y: 0.5
+            on_press:
+                root.manager.current = 'boxes_test'
+
+        Button:
             text: 'Exit'
             size_hint_y: 0.5
             on_press:
@@ -28,24 +34,22 @@
         orientation: 'vertical'
         spacing: 10
         padding: 10
-
         Button:
             text: 'Add Box'
             size_hint_y: None
             height: 40
             on_press:
                 root.show_add_box_popup()
-
         BoxLayout:
             orientation: 'vertical'
-            size_hint_y: 1  # Use all available space
+            size_hint_y: 1
             ScrollView:
-                size_hint: (1, 1)  # Allow ScrollView to take all available space
+                size_hint: (1, 1)
                 BoxLayout:
                     id: boxes_results_box
                     orientation: 'vertical'
-                    size_hint_y: 1
-
+                    size_hint_y: None
+                    height: self.minimum_height
         Button:
             text: 'Back to Main Menu'
             size_hint_y: None
@@ -55,61 +59,24 @@
 
 <BoxItemsScreen>:
     name: 'box_items'
+    # ... (unchanged code for BoxItemsScreen)
+
+<BoxesScreenDisplayBoxes>:
+    name: 'boxes_test'
     BoxLayout:
         orientation: 'vertical'
-        spacing: 2  # Reduce spacing between components
-        padding: 5  # Reduce padding around the screen
-
-        # Display boxes with items
-        Label:
-            text: 'Boxes with Items'
-            size_hint_y: None
-            height: 20  # Smaller label height for mobile
-        ScrollView:
-            size_hint_y: 0.25  # Compact height for boxes list
-            BoxLayout:
-                id: boxes_with_items_box
-                orientation: 'vertical'
-                size_hint_y: None
-                height: self.minimum_height
-
-        # Input and Button to Find Items by Box ID
-        BoxLayout:
-            orientation: 'horizontal'
-            size_hint_y: None
-            height: 25  # Reduce height for compact input section
-            Label:
-                text: 'Enter Box ID'
-                size_hint_x: 0.4  # Compact label
-            TextInput:
-                id: box_id_input
-                multiline: False
-                hint_text: 'Box ID'
-                size_hint_x: 0.3
+        spacing: 10
+        padding: 10
         Button:
-            text: 'Find Items'
+            text: 'Back to Main'
             size_hint_y: None
-            height: 25  # Compact button height
+            height: 40
             on_press:
-                root.find_items_by_box_id()
-
-        # Display items for the selected Box ID
-        Label:
-            text: 'Items in Selected Box'
-            size_hint_y: None
-            height: 20  # Smaller label height for mobile
-        ScrollView:
-            size_hint_y: 0.25  # Compact height for items list
-            BoxLayout:
-                id: items_results_box
-                orientation: 'vertical'
-                size_hint_y: None
-                height: self.minimum_height
-
-        Button:
-            text: 'Back to Main Menu'
-            size_hint_y: None
-            height: 25  # Compact button height for Back
-            on_press:
-                root.clear_results()
                 root.manager.current = 'main'
+        ScrollView:
+            size_hint: (1, 1)
+            BoxLayout:
+                id: main_container
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height

@@ -280,7 +280,8 @@ def show_edit_popup(screen, box):
             session.merge(box)
             session.commit()
             Logger.info(f"BoxesScreen: Box with alias {box.alias} updated successfully.")
-            screen.display_boxes()
+            #screen.display_boxes()
+            screen.on_pre_enter()
         except Exception as e:
             Logger.error(f"BoxesScreen: Failed to update box - {e}")
             session.rollback()
@@ -394,4 +395,105 @@ def show_view_popup(box, boxes, current_index, screen):
     popup_layout.add_widget(nav_buttons_layout)
 
     popup = Popup(title=f"View Box: {box.alias}", content=popup_layout, size_hint=(0.9, 0.9))
+    popup.open()
+
+def show_alias_edit_popup(parent_screen, db_box, box_theme):
+    """Shows a popup to edit the alias of the given box."""
+    Logger.debug(f"show_alias_edit_popup: Called for Box ID {db_box.id}")
+
+    # Popup content
+    content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+    alias_input = TextInput(text=db_box.alias if db_box.alias else "", multiline=False, hint_text="Enter new alias")
+
+    # Buttons
+    button_layout = BoxLayout(size_hint_y=None, height=40, spacing=10)
+    save_button = Button(
+        text="Save",
+        on_press=lambda btn: save_alias(parent_screen, db_box, alias_input.text),
+    )
+    cancel_button = Button(text="Return", on_press=lambda btn: popup.dismiss())
+
+    button_layout.add_widget(save_button)
+    button_layout.add_widget(cancel_button)
+
+    # Add widgets to content
+    content.add_widget(Label(text="Edit Alias", size_hint_y=None, height=30))
+    content.add_widget(alias_input)
+    content.add_widget(button_layout)
+
+    # Create and open the popup
+    popup = Popup(title="Edit Alias", content=content, size_hint=(0.7, 0.5))
+    popup.open()
+
+
+def save_alias(parent_screen, db_box, new_alias):
+    """Saves the new alias to the database and handles duplicate alias errors."""
+    Logger.debug(f"save_alias: Called for Box ID {db_box.id} with new alias '{new_alias}'")
+
+    # Update alias in the database
+    session = SessionLocal()
+    try:
+        existing_box = session.query(BoxModel).filter_by(alias=new_alias).first()
+        if existing_box:
+            Logger.error(f"Alias '{new_alias}' already exists for Box ID {existing_box.id}.")
+
+            # Generate suggestions using the alias utilities
+            alias_dict = parent_screen.alias_dict  # Preloaded alias dictionary
+            theme = parent_screen.current_theme or "default"
+            suggestions = []
+
+            try:
+                for _ in range(3):
+                    suggestion = generate_unique_alias(session, BoxModel, theme, alias_dict, is_box=True)
+                    if suggestion not in suggestions:  # Avoid duplicates in suggestions
+                        suggestions.append(suggestion)
+            except ValueError as e:
+                Logger.error(f"Error generating alias suggestions: {e}")
+
+            if not suggestions:
+                suggestions = [f"{new_alias}_1", f"{new_alias}_2", f"{new_alias}_3"]
+                Logger.debug(f"Fallback suggestions generated: {suggestions}")
+
+            show_duplicate_alias_popup(parent_screen, db_box, new_alias, suggestions)
+            return
+
+        box = session.query(BoxModel).filter_by(id=db_box.id).first()
+        if not box:
+            Logger.error(f"Box with ID {db_box.id} not found. Cannot update alias.")
+            return
+        box.alias = new_alias
+        session.commit()
+        Logger.info(f"Alias for Box ID {db_box.id} updated to '{new_alias}'.")
+
+        # Refresh the display on the parent screen
+        parent_screen.on_pre_enter()
+    except Exception as e:
+        Logger.error(f"Error updating alias for Box ID {db_box.id}: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+def show_duplicate_alias_popup(parent_screen, db_box, attempted_alias, suggestions):
+    """Show a popup when a duplicate alias is detected."""
+    Logger.debug(f"show_duplicate_alias_popup: Called for Box ID {db_box.id} with alias '{attempted_alias}'")
+
+    # Popup content
+    content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+    content.add_widget(Label(text=f"The alias '{attempted_alias}' already exists.", size_hint_y=None, height=30))
+
+    if suggestions:
+        content.add_widget(Label(text="Here are some suggestions:", size_hint_y=None, height=20))
+        for suggestion in suggestions:
+            content.add_widget(Label(text=f"• {suggestion}", size_hint_y=None, height=20))
+    else:
+        content.add_widget(Label(text="No suggestions available.", size_hint_y=None, height=30))
+
+    # Buttons
+    button_layout = BoxLayout(size_hint_y=None, height=40, spacing=10)
+    close_button = Button(text="Close", on_press=lambda btn: popup.dismiss())
+    button_layout.add_widget(close_button)
+    content.add_widget(button_layout)
+
+    # Create and open the popup
+    popup = Popup(title="Duplicate Alias", content=content, size_hint=(0.7, 0.5))
     popup.open()

@@ -118,3 +118,27 @@ class ImageHandler:
         texture.blit_buffer(data, colorfmt="rgba", bufferfmt="ubyte")
         texture.flip_vertical()  # Ensure correct orientation
         return texture
+
+    @staticmethod
+    def resize_to_100_100(image_data, target_size=(100, 100)):
+        """
+        Resize the given image data to match the size of na.jpeg (100x100 by default).
+        Returns a texture resized to the given target_size.
+        """
+        try:
+            image = Image.open(io.BytesIO(image_data))
+            image = ImageHandler.fix_orientation(image)
+            # Resize image to the target size
+            image = image.resize(target_size, Image.Resampling.LANCZOS)
+
+            # Convert the resized image to bytes
+            output = io.BytesIO()
+            image.save(output, format="JPEG")
+            resized_data = output.getvalue()
+
+            # Convert resized_data to texture
+            texture = ImageHandler.bytes_to_texture(resized_data)
+            return texture
+        except Exception as e:
+            logger.error(f"Error resizing image to na size: {e}")
+            raise

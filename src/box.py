@@ -97,7 +97,8 @@ class Box:
         # Load the image and create a thumbnail
         try:
             image_data = ImageHandler.load_image(picture_path)
-            thumbnail = ImageHandler.create_thumbnail(image_data)
+            resized_data = self.resize_to_100_100(image_data, (100, 100))
+            thumbnail = ImageHandler.create_thumbnail(resized_data)
         except Exception as e:
             logger.error(f"Error loading or processing image: {e}")
             raise
@@ -109,7 +110,7 @@ class Box:
             raise ValueError(f"Box with ID {box_id} not found.")
 
         try:
-            ImageHandler.save_to_database(session, model, 'box_picture', image_data)
+            ImageHandler.save_to_database(session, model, 'box_picture', resized_data)
             ImageHandler.save_to_database(session, model, 'box_thumbnail', thumbnail)
         except Exception as e:
             logger.error(f"Error saving image to database: {e}")
