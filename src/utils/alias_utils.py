@@ -109,19 +109,20 @@ def find_next_available_theme(session, model, sorted_themes, alias_dict):
 
 def sort_aliases(aliases):
     """
-    Sort aliases by digit (0-9) first and then alphabetically.
+    Sort aliases by numeric prefix first, then alphabetically.
 
     :param aliases: List of aliases to sort.
     :return: Sorted list of aliases.
     """
     def sort_key(alias):
-        # Extract numeric part and non-numeric part for sorting
+        # Extract numeric prefix and non-numeric suffix
         numeric_part = ''.join(c for c in alias if c.isdigit())
         non_numeric_part = ''.join(c for c in alias if not c.isdigit())
 
-        # Convert numeric part to integer if it exists; default to 0
-        numeric_value = int(numeric_part) if numeric_part else 0
+        # Convert numeric part to integer for proper sorting; default to infinity if no numeric part
+        numeric_value = int(numeric_part) if numeric_part else float('inf')
+
+        # Return tuple for sorting: numeric first, then alphabetic part
         return (numeric_value, non_numeric_part.lower())
 
     return sorted(aliases, key=sort_key)
-

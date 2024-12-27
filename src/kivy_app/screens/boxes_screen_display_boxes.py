@@ -40,13 +40,14 @@ class BoxesScreenDisplayBoxes(Screen):
             if boxes:
                 # extract aliases and sort them using updated utility
                 # Ensure all aliases (predefined and user-created) are included in the sorting
-                for box in boxes:
-                    if box.alias and box.alias not in sort_aliases:
-                        sort_aliases.append(box.alias)
+                aliases = [box.alias for box in boxes if box.alias]
+                sorted_aliases = sort_aliases(aliases)
 
-                # Sort the boxes based on the complete sorted_aliases list
-                boxes = sorted(boxes, key=lambda box: sort_aliases.index(
-                    box.alias) if box.alias in sort_aliases else float('inf'))
+                # Sort the boxes based on the sorted aliases
+                boxes = sorted(
+                    boxes,
+                    key=lambda box: sorted_aliases.index(box.alias) if box.alias in sorted_aliases else float('inf'),
+                    )
 
                 # For each box, we will create a box UI using create_box.
                 # We'll still pass the same hard-coded items for demonstration.

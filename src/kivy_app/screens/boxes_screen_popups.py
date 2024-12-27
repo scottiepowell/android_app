@@ -30,11 +30,39 @@ def show_add_box_popup(screen):
     popup_layout.add_widget(Label(text="Description and Location"))
     popup_layout.add_widget(basic_fields_layout)
 
-    # Add Picture Button
-    add_picture_button = Button(text="Add Picture", size_hint_y=None, height=40)
-    image_thumbnail = Image(size_hint=(1, None), height=100, allow_stretch=True, keep_ratio=True)
-    popup_layout.add_widget(add_picture_button)
+    # Dropdown or toggle for Add Picture options
+    add_picture_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=None, height=40)
+    add_picture_label = Label(text="Add Picture:", size_hint_x=0.4)
+    add_picture_button_camera = Button(text="Use Camera", size_hint_x=0.3)
+    add_picture_button_filechooser = Button(text="Choose File", size_hint_x=0.3)
 
+    add_picture_layout.add_widget(add_picture_label)
+    add_picture_layout.add_widget(add_picture_button_camera)
+    add_picture_layout.add_widget(add_picture_button_filechooser)
+    popup_layout.add_widget(add_picture_layout)
+
+    image_thumbnail = Image(size_hint=(1, None), height=100, allow_stretch=True, keep_ratio=True)
+    popup_layout.add_widget(image_thumbnail)
+
+    # Open camera logic
+    def open_camera(instance):
+        save_directory = os.path.join(os.getcwd(), "images")
+        os.makedirs(save_directory, exist_ok=True)
+
+        def on_picture_taken(image_path):
+            # Load and process the captured image
+            try:
+                image_data = ImageHandler.load_image(image_path)
+                thumbnail_data["data"] = ImageHandler.create_thumbnail(image_data)
+                image_thumbnail.texture = ImageHandler.bytes_to_texture(thumbnail_data["data"])
+            except Exception as e:
+                Logger.error(f"Failed to process captured image: {e}")
+
+        CameraHandler.show_camera_popup(save_directory, on_picture_taken)
+
+    add_picture_button_camera.bind(on_press=open_camera)
+
+    # Open file chooser logic
     def open_filechooser(instance):
         filechooser_popup = Popup(title="Choose Image", size_hint=(0.9, 0.9))
         filechooser_layout = BoxLayout(orientation='vertical')
@@ -48,37 +76,11 @@ def show_add_box_popup(screen):
                 try:
                     image_data = ImageHandler.load_image(selected[0])
                     thumbnail_data["data"] = ImageHandler.create_thumbnail(image_data)
+                    image_thumbnail.texture = ImageHandler.bytes_to_texture(thumbnail_data["data"])
                 except Exception as e:
                     Logger.error(f"Failed to load image: {e}")
-                    return
 
-                preview_popup = Popup(title="Preview Image", size_hint=(0.9, 0.9))
-                preview_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
-                full_image = Image(size_hint=(1, None), height=400, allow_stretch=True, keep_ratio=True)
-                full_image.texture = ImageHandler.bytes_to_texture(image_data)
-                preview_layout.add_widget(full_image)
-
-                def confirm_image(instance):
-                    image_thumbnail.texture = ImageHandler.bytes_to_texture(thumbnail_data["data"])
-                    add_picture_button.opacity = 0
-                    popup_layout.remove_widget(add_picture_button)
-                    popup_layout.add_widget(image_thumbnail, index=1)
-                    preview_popup.dismiss()
-                    filechooser_popup.dismiss()
-
-                def cancel_image(instance):
-                    selected_image_path["path"] = None
-                    preview_popup.dismiss()
-
-                preview_buttons = BoxLayout(size_hint_y=None, height=40, spacing=10)
-                save_button = Button(text="Save", on_press=confirm_image)
-                cancel_button = Button(text="Cancel", on_press=cancel_image)
-                preview_buttons.add_widget(save_button)
-                preview_buttons.add_widget(cancel_button)
-
-                preview_layout.add_widget(preview_buttons)
-                preview_popup.content = preview_layout
-                preview_popup.open()
+                filechooser_popup.dismiss()
 
         filechooser_buttons = BoxLayout(size_hint=(1, 0.1), spacing=10)
         confirm_button = Button(text="Select", on_press=show_image_preview)
@@ -90,7 +92,7 @@ def show_add_box_popup(screen):
         filechooser_popup.content = filechooser_layout
         filechooser_popup.open()
 
-    add_picture_button.bind(on_press=open_filechooser)
+    add_picture_button_filechooser.bind(on_press=open_filechooser)
 
     # Buttons for save/cancel
     button_layout = BoxLayout(size_hint_y=None, height=40, spacing=10)

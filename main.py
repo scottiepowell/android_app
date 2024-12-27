@@ -3,7 +3,7 @@ import kivy
 kivy.logger.Logger.setLevel("DEBUG")
 
 from kivy.lang import Builder
-from kivy.app import App
+from kivy_reloader.app import App
 from kivy.uix.screenmanager import ScreenManager
 from kivy.logger import Logger
 from src.kivy_app.screens.main_menu_screen import MainMenuScreen
