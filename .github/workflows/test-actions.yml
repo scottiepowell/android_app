@@ -1,0 +1,27 @@
+name: ✅ GitHub Actions Test
+
+on:
+  workflow_dispatch:  # Manual run button
+  push:
+    branches:
+      - dev  # or main or any branch you're testing
+
+jobs:
+  test-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛠️ Checkout code
+        uses: actions/checkout@v3
+
+      - name: 💬 Print environment and hello
+        run: |
+          echo "🎉 GitHub Actions is working!"
+          echo "🔐 GH_PIPELINE = ${{ secrets.GH_PIPELINE }}"
+          echo "👤 Actor: $GITHUB_ACTOR"
+          echo "📦 Repo: $GITHUB_REPOSITORY"
+          echo "💡 Workflow: $GITHUB_WORKFLOW"
+
+      - name: 🧪 Test basic Python
+        run: |
+          python3 -c "print('👋 Hello from Python!')"
