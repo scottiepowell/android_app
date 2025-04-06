@@ -1,0 +1,51 @@
+name: 🔌 OCI Config + Connectivity Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  oci-test:
+    runs-on: ubuntu-latest
+
+    env:
+      OCI_USER: ${{ secrets.OCI_USER }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+      OCI_REGION: ${{ secrets.OCI_REGION }}
+      OCI_KEY_FILE: /home/runner/.oci/oci_api_key.pem
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🔐 Restore OCI private key
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Python dependencies
+        run: pip install python-dotenv oci
+
+      - name: 📝 Run setup_oci_config.py
+        run: |
+          python setup_oci_config.py
+          echo "✅ Config generated:"
+          cat ~/.oci/config
+
+      - name: 🔍 Test connectivity to OCI (List OKE clusters)
+        run: |
+          python -c "
+import oci
+config = oci.config.from_file()
+ce_client = oci.container_engine.ContainerEngineClient(config)
+response = ce_client.list_clusters(compartment_id=config['tenancy'])
+print('✅ Clusters:')
+for c in response.data:
+    print(f'- {c.name} ({c.id})')
+"
