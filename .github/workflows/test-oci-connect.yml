@@ -42,15 +42,16 @@ jobs:
         run: |
           # Write Python code to a file
           cat <<EOF > test_oci.py
-          import oci
+import oci
 
-          config = oci.config.from_file()
-          ce_client = oci.container_engine.ContainerEngineClient(config)
-          response = ce_client.list_clusters(compartment_id=config['tenancy'])
-          print('✅ Clusters:')
-          for c in response.data:
-              print(f'- {c.name} ({c.id})')
-          EOF
+config = oci.config.from_file()
+ce_client = oci.container_engine.ContainerEngineClient(config)
+response = ce_client.list_clusters(compartment_id=config['tenancy'])
+print('✅ Clusters:')
+for c in response.data:
+    print(f'- {c.name} ({c.id})')
+EOF
 
-              # Execute the Python script
-              python test_oci.py
+          # Execute the Python script
+          python test_oci.py
+
