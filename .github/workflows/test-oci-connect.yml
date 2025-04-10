@@ -2,6 +2,9 @@ name: 🔌 OCI Config + Connectivity Test
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dev
 
 jobs:
   oci-test:
@@ -40,18 +43,12 @@ jobs:
 
       - name: 🔍 Test connectivity to OCI (List OKE clusters)
         run: |
-          # Write Python code to a file
-          cat <<EOF > test_oci.py
-import oci
-
-config = oci.config.from_file()
-ce_client = oci.container_engine.ContainerEngineClient(config)
-response = ce_client.list_clusters(compartment_id=config['tenancy'])
-print('✅ Clusters:')
-for c in response.data:
-    print(f'- {c.name} ({c.id})')
-EOF
-
-          # Execute the Python script
+          echo "import oci" > test_oci.py
+          echo "" >> test_oci.py
+          echo "config = oci.config.from_file()" >> test_oci.py
+          echo "ce_client = oci.container_engine.ContainerEngineClient(config)" >> test_oci.py
+          echo "response = ce_client.list_clusters(compartment_id=config['tenancy'])" >> test_oci.py
+          echo "print('✅ Clusters:')" >> test_oci.py
+          echo "for c in response.data:" >> test_oci.py
+          echo "    print(f'- {c.name} ({c.id})')" >> test_oci.py
           python test_oci.py
-
