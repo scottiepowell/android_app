@@ -39,9 +39,9 @@ jobs:
           cat ~/.oci/config
 
       - name: 🔍 Test connectivity to OCI (List OKE clusters)
-  run: |
-    # Write Python code to a file
-    cat <<EOF > test_oci.py
+        run: |
+          # Write Python code to a file
+          cat <<EOF > test_oci.py
 import oci
 
 config = oci.config.from_file()
