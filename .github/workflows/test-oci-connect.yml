@@ -95,7 +95,7 @@ jobs:
                           cluster_id=cluster.id)
                       kubeconfig_path = f'/tmp/kubeconfig_{cluster.id}'
                       with open(kubeconfig_path, 'w') as f:
-                          f.write(kubeconfig_response.data)
+                          f.write(kubeconfig_response.data.text)
                       # Use kubectl to list namespaces in the cluster
                       result = subprocess.run(
                           ['kubectl', '--kubeconfig', kubeconfig_path, 'get', 'namespaces', '-o', 'jsonpath={.items[*].metadata.name}'],
