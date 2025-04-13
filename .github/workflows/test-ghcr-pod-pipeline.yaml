@@ -34,14 +34,12 @@ jobs:
       - name: Check if Custom Image Exists in GHCR
         id: check_image
         env:
-          # Ensure GH_PIPELINE is also exposed to this step.
-          IMAGE_REF: ghcr.io/${GITHUB_REPOSITORY}/custom-test-image
+          IMAGE_REF: ghcr.io/${{ github.repository }}/custom-test-image
           GH_PIPELINE: ${{ secrets.GH_PIPELINE }}
         run: |
-          IMAGE_URL="$IMAGE_REF/manifests/latest"
+          # Build the manifest URL using the v2 API.
+          IMAGE_URL="https://ghcr.io/v2/${{ github.repository }}/custom-test-image/manifests/latest"
           echo "Checking for image at $IMAGE_URL"
-          # Include the proper Accept header and follow redirects,
-          # and add an Authorization header with your token.
           AUTH_HEADER="Authorization: Bearer ${GH_PIPELINE}"
           HTTP_CODE=$(curl -sL -o /dev/null -w "%{http_code}" \
             -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
@@ -55,7 +53,6 @@ jobs:
             echo "Image does not exist (HTTP code: $HTTP_CODE)"
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
-
 
       # Conditionally run the build if the image does not exist.
       - name: Build and Push Docker Image
