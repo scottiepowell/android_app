@@ -1,5 +1,8 @@
 FROM ubuntu:22.04
 
+# Link the image to the GitHub repository.
+LABEL org.opencontainers.image.source="https://github.com/scottiepowell/android_app"
+
 RUN apt update && apt install -y \
     python3-pip \
     git \
