@@ -10,6 +10,7 @@ env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64_v1"
   IMAGE_TAG: "v1"
+  # comment block to trigger github actions - sdfsd
 
 jobs:
   build-image:
