@@ -120,3 +120,61 @@ jobs:
                       print(f"  Error retrieving kubeconfig or namespaces for cluster {cluster.id}: {str(e)}")
           EOF
           python test_oci_k8s.py
+
+  ephemeral-test:
+    needs: oci-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Ephemeral Namespace
+        id: create_ns
+        run: |
+          # Generate a unique namespace name using the current timestamp
+          EPHEMERAL_NAMESPACE="build-ns-$(date +%s)"
+          echo "EPHEMERAL_NAMESPACE=${EPHEMERAL_NAMESPACE}" >> $GITHUB_ENV
+          echo "Creating ephemeral namespace: ${EPHEMERAL_NAMESPACE}"
+          if ! kubectl create namespace "${EPHEMERAL_NAMESPACE}"; then
+            echo "Error: Failed to create namespace ${EPHEMERAL_NAMESPACE}" >&2
+            exit 1
+          fi
+
+      - name: Deploy Test Pod
+        id: deploy_pod
+        run: |
+          echo "Deploying test pod using manifest from .github/test/test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
+          if ! kubectl apply -f .github/test/test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
+            echo "Error: Failed to deploy test pod" >&2
+            exit 1
+          fi
+
+      - name: Wait for Test Pod to be Ready
+        id: wait_pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          if [ -z "$POD_NAME" ]; then
+            echo "Error: No pod found in namespace ${EPHEMERAL_NAMESPACE}" >&2
+            exit 1
+          fi
+          echo "Waiting for pod ${POD_NAME} to be ready..."
+          if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}" --timeout=60s; then
+            echo "Error: Pod ${POD_NAME} did not become ready in time" >&2
+            kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
+            exit 1
+          fi
+
+      - name: Log Test Pod Details
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Pod details for ${POD_NAME}:"
+          kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
+
+      - name: Cleanup Ephemeral Namespace
+        if: always()
+        run: |
+          echo "Cleaning up: Deleting namespace ${EPHEMERAL_NAMESPACE}"
+          if ! kubectl delete namespace "${EPHEMERAL_NAMESPACE}" --wait; then
+            echo "Error: Failed to delete namespace ${EPHEMERAL_NAMESPACE}" >&2
+            exit 1
+          fi
