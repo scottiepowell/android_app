@@ -8,9 +8,9 @@ on:
 
 env:
   GH_ACTOR: ${{ github.actor }}
-  IMAGE_NAME: "arm64_v1"
-  IMAGE_TAG: "v1"
-  # comment block to trigger github actions - sdfsd
+  IMAGE_NAME: "arm64_v2"
+  IMAGE_TAG: "v2"
+  # comment block to trigger github actions - 
 
 jobs:
   build-image:
@@ -39,7 +39,6 @@ jobs:
           IMAGE="ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           echo "Checking if image exists: $IMAGE"
 
-          # 'docker manifest inspect' will exit non-zero if the manifest doesn't exist
           if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "Image already exists in GHCR."
@@ -56,12 +55,19 @@ jobs:
           file: ./.github/test/Dockerfile
           platforms: linux/arm64
           push: true
-          # Use the environment variables for the tag
           tags: ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-      - name: Skip Build as Image Already Exists
-        if: steps.check_image.outputs.exists == 'true'
-        run: echo "Image already exists, skipping build."
+      - name: Make GHCR Package Public
+        if: steps.check_image.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PIPELINE }}
+        run: |
+          echo "Ensuring GHCR package is public..."
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            /user/packages/container/${{ github.repository }}/settings \
+            -f visibility=public
 
 
   ephemeral-test:
