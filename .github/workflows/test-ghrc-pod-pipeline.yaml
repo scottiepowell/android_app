@@ -1,0 +1,135 @@
+name: OCI & Ephemeral Pod Test Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          # Change the tag below according to your repository naming preferences.
+          tags: ghcr.io/${{ github.repository }}/custom-test-image:latest
+
+  ephemeral-test:
+    needs: build-image
+    runs-on: ubuntu-latest
+    env:
+      OCI_USER: ${{ secrets.OCI_USER }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+      OCI_REGION: ${{ secrets.OCI_REGION }}
+      OCI_KEY_FILE: /home/runner/.oci/oci_api_key.pem
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: pip install python-dotenv oci
+
+      - name: Install OCI CLI
+        run: |
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults --install-dir /usr/local/bin
+
+      - name: Link OCI CLI to PATH
+        run: |
+          sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
+
+      - name: Setup OCI Config and Generate Kubeconfig
+        run: |
+          # Set up OCI configuration
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          python setup_oci_config.py
+          echo "OCI config:"
+          cat ~/.oci/config
+          # Obtain the first cluster's ID using OCI CLI
+          CLUSTER_ID=$(oci ce cluster list --compartment-id $OCI_TENANCY --query 'data[0].id' --raw-output)
+          if [ -z "$CLUSTER_ID" ]; then
+            echo "Error: No cluster found!" >&2
+            exit 1
+          fi
+          echo "Found cluster: $CLUSTER_ID"
+          # Generate kubeconfig file using OCI CLI
+          oci ce cluster create-kubeconfig --cluster-id $CLUSTER_ID --file /tmp/kubeconfig_test --region $OCI_REGION
+          echo "KUBECONFIG=/tmp/kubeconfig_test" >> $GITHUB_ENV
+          echo "Kubeconfig generated successfully."
+
+      - name: Create Ephemeral Namespace
+        id: create_ns
+        run: |
+          EPHEMERAL_NAMESPACE="build-ns-$(date +%s)"
+          echo "EPHEMERAL_NAMESPACE=${EPHEMERAL_NAMESPACE}" >> $GITHUB_ENV
+          echo "Creating ephemeral namespace: ${EPHEMERAL_NAMESPACE}"
+          if ! kubectl create namespace "${EPHEMERAL_NAMESPACE}"; then
+            echo "Error: Failed to create namespace ${EPHEMERAL_NAMESPACE}" >&2
+            exit 1
+          fi
+
+      - name: Deploy Test Pod Using Custom Image
+        id: deploy_pod
+        run: |
+          echo "Deploying test pod using manifest from .github/test/test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
+          if ! kubectl apply -f .github/test/test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
+            echo "Error: Failed to deploy test pod" >&2
+            exit 1
+          fi
+
+      - name: Wait for Test Pod to be Ready
+        id: wait_pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          if [ -z "$POD_NAME" ]; then
+            echo "Error: No pod found in namespace ${EPHEMERAL_NAMESPACE}" >&2
+            exit 1
+          fi
+          echo "Waiting for pod ${POD_NAME} to be ready..."
+          if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}" --timeout=60s; then
+            echo "Error: Pod ${POD_NAME} did not become ready in time" >&2
+            kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
+            exit 1
+          fi
+
+      - name: Log Test Pod Details
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Pod details for ${POD_NAME}:"
+          kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
+
+      - name: Cleanup Ephemeral Namespace
+        if: always()
+        run: |
+          echo "Cleaning up: Deleting namespace ${EPHEMERAL_NAMESPACE}"
+          if ! kubectl delete namespace "${EPHEMERAL_NAMESPACE}" --wait; then
+            echo "Error: Failed to delete namespace ${EPHEMERAL_NAMESPACE}" >&2
+            exit 1
+          fi
