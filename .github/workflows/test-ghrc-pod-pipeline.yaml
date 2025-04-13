@@ -45,8 +45,8 @@ jobs:
         if: steps.check_image.outputs.exists == 'false'
         uses: docker/build-push-action@v4
         with:
-          context: ./docker/test     # Adjust the context if needed.
-          file: ./docker/test/Dockerfile
+          context: ./.github/test     # Adjust the context if needed.
+          file: ./.github/test/Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository }}/custom-test-image:latest
 
