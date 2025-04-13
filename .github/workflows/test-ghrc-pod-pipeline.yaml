@@ -33,8 +33,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v4
         with:
-          context: ./docker/test   # Update the context if your Dockerfile is in a different location.
-          file: ./docker/test/Dockerfile
+          context: ./.github/test   # Update the context if your Dockerfile is in a different location.
+          file: ./.github/test/Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository }}/custom-test-image:latest
 
