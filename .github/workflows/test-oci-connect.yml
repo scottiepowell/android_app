@@ -1,4 +1,4 @@
-name: 🔌 OCI Config + Connectivity Test
+name: 🔌 OCI Config + Connectivity & Kubernetes Test
 
 on:
   workflow_dispatch:
@@ -52,3 +52,66 @@ jobs:
           echo "for c in response.data:" >> test_oci.py
           echo "    print(f'- {c.name} ({c.id})')" >> test_oci.py
           python test_oci.py
+
+      - name: ⚙️ Install kubectl
+        run: |
+          # Download the latest stable release of kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: 📝 Run tests for Node Pools and Namespaces
+        run: |
+          cat << 'EOF' > test_oci_k8s.py
+          import oci
+          import subprocess
+          import os
+
+          # Load OCI config and create the ContainerEngineClient
+          config = oci.config.from_file()
+          ce_client = oci.container_engine.ContainerEngineClient(config)
+          
+          # Retrieve list of clusters
+          clusters = ce_client.list_clusters(compartment_id=config['tenancy']).data
+          if not clusters:
+              print("No clusters found in compartment:", config['tenancy'])
+          else:
+              print("✅ Clusters:")
+              for cluster in clusters:
+                  print(f'- {cluster.name} ({cluster.id})')
+                  
+                  # List node pools for the cluster
+                  np_response = ce_client.list_node_pools(compartment_id=config['tenancy'], cluster_id=cluster.id)
+                  print("  Node Pools:")
+                  if np_response.data:
+                      for np in np_response.data:
+                          print(f'    - {np.name} ({np.id})')
+                  else:
+                      print("    No node pools found.")
+
+                  # Create a kubeconfig for the cluster (using token version 2.0.0)
+                  try:
+                      kubeconfig_response = ce_client.create_kubeconfig(
+                          cluster_id=cluster.id,
+                          endpoint='public',
+                          token_version='2.0.0'
+                      )
+                      kubeconfig_path = f'/tmp/kubeconfig_{cluster.id}'
+                      with open(kubeconfig_path, 'w') as f:
+                          f.write(kubeconfig_response.data)
+                      # Use kubectl to list namespaces in the cluster
+                      result = subprocess.run(
+                          ['kubectl', '--kubeconfig', kubeconfig_path, 'get', 'namespaces', '-o', 'jsonpath={.items[*].metadata.name}'],
+                          capture_output=True,
+                          text=True
+                      )
+                      if result.returncode == 0:
+                          print("  Namespaces:")
+                          print("    " + result.stdout)
+                      else:
+                          print("  Failed to list namespaces. Error:")
+                          print(result.stderr)
+                  except Exception as e:
+                      print(f"  Error retrieving kubeconfig or namespaces for cluster {cluster.id}: {str(e)}")
+          EOF
+          python test_oci_k8s.py
