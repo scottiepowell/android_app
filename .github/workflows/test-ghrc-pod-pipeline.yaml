@@ -36,7 +36,7 @@ jobs:
           context: ./.github/test   # Update the context if your Dockerfile is in a different location.
           file: ./.github/test/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/custom-test-image:latest
+          tags: ghcr.io/${{ github.repository }}:custom-test-image
 
   ephemeral-test:
     needs: build-image
@@ -102,7 +102,7 @@ jobs:
       - name: Deploy Test Pod Using Custom Image
         id: deploy_pod
         run: |
-          echo "Deploying test pod using manifest from .github/test/test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
+          echo "Deploying test pod using manifest from .github/test/ghrc-test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
           sed "s|REPO_PLACEHOLDER|${GITHUB_REPOSITORY}|g" .github/test/ghrc-test-pod.yaml > /tmp/ghrc-test-pod.yaml
           if ! kubectl apply -f /tmp/ghrc-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
               echo "Error: Failed to deploy test pod" >&2
