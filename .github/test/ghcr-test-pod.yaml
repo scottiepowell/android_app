@@ -7,7 +7,7 @@ metadata:
 spec:
   containers:
     - name: test-container
-      image: ghcr.io/REPO_PLACEHOLDER/custom-test-image:latest
+      image: IMAGE_PLACEHOLDER
       command: ["sh", "-c", "echo 'Hello from custom test pod'; sleep 3600"]
       resources:
         requests:

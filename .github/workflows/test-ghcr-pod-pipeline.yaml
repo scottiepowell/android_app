@@ -127,10 +127,15 @@ jobs:
       - name: Deploy Test Pod Using Custom Image
         id: deploy_pod
         run: |
-          echo "Deploying test pod using manifest from .github/test/ghcr-test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
-          sed "s|REPO_PLACEHOLDER|${GITHUB_REPOSITORY}|g" .github/test/ghcr-test-pod.yaml > /tmp/ghcr-test-pod.yaml
+          echo "Deploying test pod to namespace ${EPHEMERAL_NAMESPACE}"
+          IMAGE="ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          echo "Using image: $IMAGE"
+          
+          # Replace IMAGE_PLACEHOLDER in the manifest
+          sed "s|IMAGE_PLACEHOLDER|${IMAGE}|g" .github/test/ghcr-test-pod.yaml > /tmp/ghcr-test-pod.yaml
+          
           if ! kubectl apply -f /tmp/ghcr-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
-              echo "Error: Failed to deploy test pod" >&2
+            echo "Error: Failed to deploy test pod" >&2
             exit 1
           fi
 
