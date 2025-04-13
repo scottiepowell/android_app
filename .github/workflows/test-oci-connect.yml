@@ -64,7 +64,11 @@ jobs:
         run: |
           bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults --install-dir /usr/local/bin
 
-
+      - name: 🔗 Link OCI CLI to /usr/local/bin
+        run: |
+          # Create a symlink to make the OCI CLI binary available on the PATH.
+          sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
+      
       - name: 📝 Run tests for Node Pools and Namespaces
         run: |
           cat << 'EOF' > test_oci_k8s.py
