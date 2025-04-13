@@ -92,10 +92,7 @@ jobs:
                   # Create a kubeconfig for the cluster (using token version 2.0.0)
                   try:
                       kubeconfig_response = ce_client.create_kubeconfig(
-                          cluster_id=cluster.id,
-                          endpoint='public',
-                          token_version='2.0.0'
-                      )
+                          cluster_id=cluster.id)
                       kubeconfig_path = f'/tmp/kubeconfig_{cluster.id}'
                       with open(kubeconfig_path, 'w') as f:
                           f.write(kubeconfig_response.data)
