@@ -140,8 +140,18 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Install Python dependencies
+        run: pip install python-dotenv oci
+
+      - name: 🛠 Install OCI CLI
         run: |
-          pip install python-dotenv oci
+          # Install OCI CLI non-interactively in this job so that the "oci" command is available.
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults --install-dir /usr/local/bin
+
+      - name: 🔗 Link OCI CLI to /usr/local/bin
+        run: |
+          # Ensure the OCI CLI binary is in the PATH.
+          # Depending on the install, adjust the path if necessary.
+          sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
 
       - name: Setup OCI Config and Kubeconfig
         run: |
@@ -215,3 +225,4 @@ jobs:
             echo "Error: Failed to delete namespace ${EPHEMERAL_NAMESPACE}" >&2
             exit 1
           fi
+
