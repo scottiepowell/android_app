@@ -1,10 +1,10 @@
 name: OCI & Ephemeral Pod Test Pipeline
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - dev
+    workflow_dispatch:
+    push:
+      paths:
+        - ".github/workflows/test-ghrc-pod-pipeline.yaml"  
 
 jobs:
   build-image:
@@ -103,8 +103,9 @@ jobs:
         id: deploy_pod
         run: |
           echo "Deploying test pod using manifest from .github/test/test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
-          if ! kubectl apply -f .github/test/ghcr-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
-            echo "Error: Failed to deploy test pod" >&2
+          sed "s|REPO_PLACEHOLDER|${GITHUB_REPOSITORY}|g" .github/test/ghrc-test-pod.yaml > /tmp/ghrc-test-pod.yaml
+          if ! kubectl apply -f /tmp/ghrc-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
+              echo "Error: Failed to deploy test pod" >&2
             exit 1
           fi
 

@@ -1,10 +1,10 @@
 name: ✅ GitHub Actions Test
 
 on:
-  workflow_dispatch:  # Manual run button
+  workflow_dispatch:
   push:
-    branches:
-      - dev  # or main or any branch you're testing
+    paths:
+      - ".github/workflows/test-actions.yml"
 
 jobs:
   test-run:

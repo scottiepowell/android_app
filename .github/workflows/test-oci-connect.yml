@@ -1,10 +1,12 @@
 name: 🔌 OCI Config + Connectivity & Kubernetes Test
 
+
 on:
   workflow_dispatch:
   push:
-    branches:
-      - dev
+    paths:
+      - ".github/workflows/test-oci-connect.yml"
+
 
 jobs:
   oci-test:
