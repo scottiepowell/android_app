@@ -37,7 +37,7 @@ jobs:
           IMAGE_REF: ghcr.io/${{ github.repository }}/custom-test-image
           GH_PIPELINE: ${{ secrets.GH_PIPELINE }}
         run: |
-          # Build the manifest URL using the v2 API.
+          # Build the manifest URL using the v2 API for GHCR.
           IMAGE_URL="https://ghcr.io/v2/${{ github.repository }}/custom-test-image/manifests/latest"
           echo "Checking for image at $IMAGE_URL"
           AUTH_HEADER="Authorization: Bearer ${GH_PIPELINE}"
