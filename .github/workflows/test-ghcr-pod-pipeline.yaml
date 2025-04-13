@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
     push:
       paths:
-        - ".github/workflows/test-ghrc-pod-pipeline.yaml"  
+        - ".github/workflows/test-ghcr-pod-pipeline.yaml"  
 
 env:
     GH_ACTOR: ${{ github.actor }}
@@ -39,7 +39,7 @@ jobs:
         run: |
           IMAGE_URL="$IMAGE_REF/manifests/latest"
           echo "Checking for image at $IMAGE_URL"
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$IMAGE_URL")
+          HTTP_CODE=$(curl -sL -o /dev/null -w "%{http_code}" -H "Accept: application/vnd.docker.distribution.manifest.v2+json" "$IMAGE_URL")
           echo "HTTP_CODE=$HTTP_CODE"
           if [ "$HTTP_CODE" == "200" ]; then
             echo "Image exists"
@@ -128,9 +128,9 @@ jobs:
       - name: Deploy Test Pod Using Custom Image
         id: deploy_pod
         run: |
-          echo "Deploying test pod using manifest from .github/test/ghrc-test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
-          sed "s|REPO_PLACEHOLDER|${GITHUB_REPOSITORY}|g" .github/test/ghrc-test-pod.yaml > /tmp/ghrc-test-pod.yaml
-          if ! kubectl apply -f /tmp/ghrc-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
+          echo "Deploying test pod using manifest from .github/test/ghcr-test-pod.yaml to namespace ${EPHEMERAL_NAMESPACE}"
+          sed "s|REPO_PLACEHOLDER|${GITHUB_REPOSITORY}|g" .github/test/ghcr-test-pod.yaml > /tmp/ghcr-test-pod.yaml
+          if ! kubectl apply -f /tmp/ghcr-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
               echo "Error: Failed to deploy test pod" >&2
             exit 1
           fi
