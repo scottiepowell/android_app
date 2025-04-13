@@ -8,8 +8,8 @@ on:
 
 env:
   GH_ACTOR: ${{ github.actor }}
-  IMAGE_NAME: "arm64_v2"
-  IMAGE_TAG: "v2"
+  IMAGE_NAME: "arm64_v3"
+  IMAGE_TAG: "v3"
   # comment block to trigger github actions - 
 
 jobs:
@@ -63,10 +63,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PIPELINE }}
         run: |
           echo "Ensuring GHCR package is public..."
+          # Build the package name with slashes replaced by "%2F"
+          PACKAGE_NAME="$(echo '${{ github.repository }}/${{ env.IMAGE_NAME }}' | sed 's|/|%2F|g')"
+          echo "PACKAGE_NAME=$PACKAGE_NAME"
+          
           gh api \
             --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            /user/packages/container/${{ github.repository }}/settings \
+            "/user/packages/container/${PACKAGE_NAME}/settings" \
             -f visibility=public
 
 
