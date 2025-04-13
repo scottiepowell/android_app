@@ -125,8 +125,11 @@ jobs:
     needs: oci-test
     runs-on: ubuntu-latest
     env:
+      OCI_USER: ${{ secrets.OCI_USER }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
       OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
       OCI_REGION: ${{ secrets.OCI_REGION }}
+      OCI_KEY_FILE: /home/runner/.oci/oci_api_key.pem
     steps:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
