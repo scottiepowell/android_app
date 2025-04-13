@@ -62,10 +62,8 @@ jobs:
 
       - name: 🛠 Install OCI CLI
         run: |
-          # Download and install the OCI CLI in non-interactive mode
-          curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh -o install.sh
-          chmod +x install.sh
-          ./install.sh --accept-all-defaults --install-dir /usr/local/bin --force
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults --install-dir /usr/local/bin
+
 
       - name: 📝 Run tests for Node Pools and Namespaces
         run: |
