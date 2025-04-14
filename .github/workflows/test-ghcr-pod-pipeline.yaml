@@ -222,14 +222,14 @@ jobs:
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- ant -version
         
-
       - name: Run Buildozer in Pod
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Running Buildozer inside the container..."
-          # For example, we assume the buildozer.spec is inside /app or /app/android_app:
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- sh -c "cd /app && buildozer android debug"
-
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- sh -c "
+            export P4A_BUILD_TOOLS_REVISION=33.0.2;
+            cd /app && buildozer android debug
+          "
+          
       - name: Copy APK from Pod
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
