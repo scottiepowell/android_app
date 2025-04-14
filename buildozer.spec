@@ -19,4 +19,4 @@ android.ant_path = /opt/ant
 storage_dir = /mnt/storage/.buildozer
 log_level = 2
 warn_on_root = 0
-p4a.buildtools = 33.0.2
+p4a.buildtools = false
