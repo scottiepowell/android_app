@@ -63,16 +63,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PIPELINE }}
         run: |
           echo "Ensuring GHCR package is public..."
-          # Build the package name with slashes replaced by "%2F"
-          PACKAGE_NAME="$(echo '${{ github.repository }}/${{ env.IMAGE_NAME }}' | sed 's|/|%2F|g')"
-          echo "PACKAGE_NAME=$PACKAGE_NAME"
-          
+          OWNER="scottiepowell"
+          PACKAGE_NAME="android_app/arm64_v3"
+          PACKAGE_NAME_ENCODED="$(echo "$PACKAGE_NAME" | sed 's|/|%2F|g')"
+          echo "PACKAGE_NAME_ENCODED=${PACKAGE_NAME_ENCODED}"
+
           gh api \
             --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            "/user/packages/container/${PACKAGE_NAME}/settings" \
+            "/users/${OWNER}/packages/container/${PACKAGE_NAME_ENCODED}/visibility" \
             -f visibility=public
-
 
   ephemeral-test:
     needs: build-image
