@@ -78,3 +78,6 @@ ENV PATH=$NDK_HOME:$PATH
 # Create final working dir
 WORKDIR /app
 COPY . /app
+
+# Fix PATH to ensure ant and sdkmanager are always in shell envs
+ENV PATH="/opt/ant/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$NDK_HOME:$PATH"
