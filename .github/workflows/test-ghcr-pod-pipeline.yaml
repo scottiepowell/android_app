@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - ".github/workflows/test-ghcr-pod-pipeline.yaml"
+      - ".github/test/"
 
 env:
   GH_ACTOR: ${{ github.actor }}
