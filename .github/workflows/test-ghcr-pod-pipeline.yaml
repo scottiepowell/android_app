@@ -229,11 +229,19 @@ jobs:
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
             sh -c 'sdkmanager --uninstall "build-tools;36.0.0" || true'
         
-      - name: Run Buildozer in Pod
+      - name: Run Buildozer in Pod with pinned python-for-android
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Installing pinned python-for-android and running build..."
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- sh -c "
-            export P4A_BUILD_TOOLS_REVISION=33.0.2;
+            set -e
+            export P4A_BUILD_TOOLS_REVISION=33.0.2
+      
+            # Force uninstall and reinstall pinned python-for-android
+            pip3 uninstall -y python-for-android || true
+            pip3 install 'python-for-android==2023.05.24'
+      
+            # Start the build
             cd /app && buildozer android debug
           "
 
