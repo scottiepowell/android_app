@@ -71,17 +71,11 @@ RUN yes | sdkmanager \
     "build-tools;33.0.2" \
     "ndk;25.2.9519653"
 
-# Optional: Tell Buildozer where the NDK is
-ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
-ENV PATH=$NDK_HOME:$PATH
-
-# Symlink the modern cmdline-tools "tools" to the legacy "tools" location
+# Single step: make "tools" symlink + ensure "sdkmanager" is at legacy path
 RUN rm -rf $ANDROID_HOME/tools \
- && ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools
-
-# Ensure sdkmanager is available at the legacy path for Buildozer compatibility
-RUN mkdir -p $ANDROID_HOME/tools/bin && \
-    ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
+ && ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools \
+ && mkdir -p $ANDROID_HOME/tools/bin \
+ && ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
 
 # Create final working dir
 WORKDIR /app
