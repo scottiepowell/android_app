@@ -221,6 +221,13 @@ jobs:
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- ant -version
+      
+      - name: Force Uninstall Build Tools 36.0.0
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Uninstalling build-tools;36.0.0 in ephemeral pod if present..."
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
+            sh -c 'sdkmanager --uninstall "build-tools;36.0.0" || true'
         
       - name: Run Buildozer in Pod
         run: |
@@ -229,7 +236,7 @@ jobs:
             export P4A_BUILD_TOOLS_REVISION=33.0.2;
             cd /app && buildozer android debug
           "
-          
+
       - name: Copy APK from Pod
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
