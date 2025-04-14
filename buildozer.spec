@@ -14,4 +14,4 @@ source.include_patterns = src/*, assets/pencil.png
 [buildozer]
 storage_dir = /mnt/storage/.buildozer
 log_level = 2
-warn_on_root = 1
+warn_on_root = 0
