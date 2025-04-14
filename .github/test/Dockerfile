@@ -37,6 +37,19 @@ RUN pip3 install --no-cache-dir \
     packaging \
     setuptools
 
+# Download and install Apache ANT (Buildozer expects 1.9.4 by default)
+ENV ANT_VERSION=1.9.4
+ENV ANT_HOME=/opt/ant
+
+RUN wget https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz \
+    && tar -xzf apache-ant-${ANT_VERSION}-bin.tar.gz -C /opt \
+    && mv /opt/apache-ant-${ANT_VERSION} $ANT_HOME \
+    && rm apache-ant-${ANT_VERSION}-bin.tar.gz
+
+# Add ANT to PATH
+ENV PATH="${ANT_HOME}/bin:$PATH"
+
+
 ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
 RUN mkdir -p $ANDROID_HOME
 

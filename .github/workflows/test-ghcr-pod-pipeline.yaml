@@ -5,13 +5,13 @@ on:
   push:
     paths:
       - ".github/workflows/test-ghcr-pod-pipeline.yaml"
-      - ".github/test/"
+      - ".github/test/**"
       - "buildozer.spec"
 
 env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v3"
+  IMAGE_TAG: "v4"
 
 jobs:
   build-image:
@@ -193,6 +193,12 @@ jobs:
           kubectl cp /tmp/src.tar.gz "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/tmp/src.tar.gz"
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /app
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- tar -xzf /tmp/src.tar.gz -C /app
+      
+      - name: Verify ANT installation in pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- ant -version
+        
 
       - name: Run Buildozer in Pod
         run: |
