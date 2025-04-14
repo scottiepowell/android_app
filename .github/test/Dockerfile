@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 LABEL org.opencontainers.image.source="https://github.com/scottiepowell/android_app"
 
-RUN apt update && apt install -y \
+RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-distutils \
     python3-dev \
@@ -24,7 +24,7 @@ RUN apt update && apt install -y \
 
 ENV PIP_ROOT_USER_ACTION=ignore
 
-# Install Buildozer and all the packages it tries to use:
+# Install Buildozer & Dependencies
 RUN pip3 install --no-cache-dir \
     buildozer \
     cython \
@@ -37,21 +37,38 @@ RUN pip3 install --no-cache-dir \
     packaging \
     setuptools
 
-# Download and install Apache ANT (Buildozer expects 1.9.4 by default)
+# Pre-install Apache ANT for Buildozer
 ENV ANT_VERSION=1.9.4
 ENV ANT_HOME=/opt/ant
-
-RUN wget https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz \
+RUN wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz \
     && tar -xzf apache-ant-${ANT_VERSION}-bin.tar.gz -C /opt \
     && mv /opt/apache-ant-${ANT_VERSION} $ANT_HOME \
     && rm apache-ant-${ANT_VERSION}-bin.tar.gz
-
-# Add ANT to PATH
 ENV PATH="${ANT_HOME}/bin:$PATH"
 
-
+# Install Android command line tools (sdkmanager)
 ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
-RUN mkdir -p $ANDROID_HOME
+ENV ANDROID_SDK_ROOT=$ANDROID_HOME
+RUN mkdir -p $ANDROID_HOME/cmdline-tools
+WORKDIR $ANDROID_HOME/cmdline-tools
+RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip \
+    && unzip -q commandlinetools-linux-9477386_latest.zip \
+    && rm commandlinetools-linux-9477386_latest.zip
 
+# Because the cmdline-tools are inside a folder named "cmdline-tools" again
+# we rename them "latest" or "tools" to keep sdkmanager at a stable path
+RUN mv cmdline-tools tools
+
+# Accept licenses and install a minimal set of packages.  This can be minimal
+# because buildozer might still download additional components
+# as needed. But at least sdkmanager must exist.
+ENV PATH=$ANDROID_HOME/cmdline-tools/tools/bin:$PATH
+RUN yes | sdkmanager \
+    "platform-tools" \
+    "platforms;android-33" \
+    "build-tools;33.0.2" \
+    "ndk;25.2.9519653"
+
+# Create final working dir
 WORKDIR /app
 COPY . /app

@@ -11,6 +11,8 @@ version = 0.0.1
 orientation = portrait
 source.include_patterns = src/*, assets/pencil.png
 
+android.ant_path = /opt/ant
+
 [buildozer]
 storage_dir = /mnt/storage/.buildozer
 log_level = 2
