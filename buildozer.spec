@@ -10,6 +10,8 @@ android.permissions = INTERNET
 version = 0.0.1
 orientation = portrait
 source.include_patterns = src/*, assets/pencil.png
+android.build_tools_version = 33.0.2
+android.api = 33
 
 android.ant_path = /opt/ant
 
