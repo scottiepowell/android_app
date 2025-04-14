@@ -11,8 +11,8 @@ spec:
       command: ["sh", "-c", "echo 'Hello from custom test pod'; sleep 3600"]
       resources:
         requests:
-          memory: "32Mi"
-          cpu: "50m"
+          memory: "1Gi"
+          cpu: "500m"
         limits:
-          memory: "64Mi"
-          cpu: "100m"
+          memory: "2Gi"
+          cpu: "1"
