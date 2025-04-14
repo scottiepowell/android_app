@@ -1,6 +1,5 @@
 FROM ubuntu:22.04
 
-# Link the image to the GitHub repository (optional)
 LABEL org.opencontainers.image.source="https://github.com/scottiepowell/android_app"
 
 RUN apt update && apt install -y \
@@ -23,10 +22,20 @@ RUN apt update && apt install -y \
     python3-virtualenv \
     && pip3 install --upgrade pip
 
-# Tells pip not to complain about root install
 ENV PIP_ROOT_USER_ACTION=ignore
 
-RUN pip3 install buildozer cython
+# Install Buildozer and all the packages it tries to use:
+RUN pip3 install --no-cache-dir \
+    buildozer \
+    cython \
+    appdirs \
+    colorama>=0.3.3 \
+    jinja2 \
+    "sh>=1.10,<2.0; sys_platform!='win32'" \
+    build \
+    toml \
+    packaging \
+    setuptools
 
 ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
 RUN mkdir -p $ANDROID_HOME
