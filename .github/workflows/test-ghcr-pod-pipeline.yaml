@@ -172,7 +172,7 @@ jobs:
           fi
           echo "Waiting for pod ${POD_NAME} to be ready..."
           if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" \
-            --namespace "${EPHEMERAL_NAMESPACE}" --timeout=60s; then
+            --namespace "${EPHEMERAL_NAMESPACE}" --timeout=300s; then
             echo "Error: Pod ${POD_NAME} did not become ready in time" >&2
             kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
             exit 1
