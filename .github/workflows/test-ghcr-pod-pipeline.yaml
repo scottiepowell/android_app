@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/test-ghcr-pod-pipeline.yaml"
       - ".github/test/"
+      - "buildozer.spec"
 
 env:
   GH_ACTOR: ${{ github.actor }}
