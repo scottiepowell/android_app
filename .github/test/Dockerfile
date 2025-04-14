@@ -58,9 +58,10 @@ RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477
 # Rename for easier path handling
 RUN mv cmdline-tools tools
 
-# Symlink to legacy path for Buildozer compatibility
-RUN mkdir -p $ANDROID_HOME/tools && \
-    ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools
+# Symlink the modern cmdline-tools "tools" to the legacy "tools" location
+RUN rm -rf $ANDROID_HOME/tools \
+ && ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools
+
 
 # Update PATH and install required SDK packages
 ENV PATH=$ANDROID_HOME/cmdline-tools/tools/bin:$PATH

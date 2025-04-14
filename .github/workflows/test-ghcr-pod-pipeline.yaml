@@ -11,7 +11,7 @@ on:
 env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v1"
+  IMAGE_TAG: "v2"
 
 jobs:
   build-image:
@@ -194,6 +194,13 @@ jobs:
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /app
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- tar -xzf /tmp/src.tar.gz -C /app
       
+      - name: Verify sdkmanager path in pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Checking for sdkmanager at /root/.buildozer/android/platform/android-sdk/tools/bin..."
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
+            ls -l /root/.buildozer/android/platform/android-sdk/tools/bin || true
+     
       - name: Verify ANT installation in pod
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
