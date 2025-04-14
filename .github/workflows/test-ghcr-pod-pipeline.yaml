@@ -8,8 +8,8 @@ on:
 
 env:
   GH_ACTOR: ${{ github.actor }}
-  IMAGE_NAME: "arm64_v3"
-  IMAGE_TAG: "v3"
+  IMAGE_NAME: "arm64_v4"
+  IMAGE_TAG: "v4"
   # comment block to trigger github actions - 
 
 jobs:
