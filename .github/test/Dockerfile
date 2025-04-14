@@ -58,11 +58,6 @@ RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477
 # Rename for easier path handling
 RUN mv cmdline-tools tools
 
-# Symlink the modern cmdline-tools "tools" to the legacy "tools" location
-RUN rm -rf $ANDROID_HOME/tools \
- && ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools
-
-
 # Update PATH and install required SDK packages
 ENV PATH=$ANDROID_HOME/cmdline-tools/tools/bin:$PATH
 RUN yes | sdkmanager \
@@ -70,12 +65,6 @@ RUN yes | sdkmanager \
     "platforms;android-33" \
     "build-tools;33.0.2" \
     "ndk;25.2.9519653"
-
-# Single step: make "tools" symlink + ensure "sdkmanager" is at legacy path
-RUN rm -rf $ANDROID_HOME/tools \
- && ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools \
- && mkdir -p $ANDROID_HOME/tools/bin \
- && ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
 
 # Create final working dir
 WORKDIR /app

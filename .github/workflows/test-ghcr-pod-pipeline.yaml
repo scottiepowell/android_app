@@ -184,7 +184,6 @@ jobs:
           echo "Pod details for ${POD_NAME}:"
           kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
 
-
       - name: Copy Source Code to Pod
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
@@ -194,6 +193,23 @@ jobs:
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /app
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- tar -xzf /tmp/src.tar.gz -C /app
       
+      - name: Create sdkmanager symlinks inside the ephemeral container
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Fixing cmdline-tools path in the ephemeral pod..."
+          # 1) Remove any old /tools directory
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- rm -rf /root/.buildozer/android/platform/android-sdk/tools
+      
+          # 2) Symlink 'tools'
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ln -s /root/.buildozer/android/platform/android-sdk/cmdline-tools/tools /root/.buildozer/android/platform/android-sdk/tools
+      
+          # 3) Symlink 'sdkmanager' to legacy tools/bin path
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /root/.buildozer/android/platform/android-sdk/tools/bin
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ln -sf /root/.buildozer/android/platform/android-sdk/cmdline-tools/tools/bin/sdkmanager /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager
+      
+          # Show the final synergy:
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ls -l /root/.buildozer/android/platform/android-sdk/tools/bin
+    
       - name: Verify sdkmanager path in pod
         run: |
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
