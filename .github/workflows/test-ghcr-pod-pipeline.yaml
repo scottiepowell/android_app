@@ -182,6 +182,38 @@ jobs:
           echo "Pod details for ${POD_NAME}:"
           kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
 
+
+      - name: Copy Source Code to Pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Tar and copy code to container..."
+          tar -czf /tmp/src.tar.gz .
+          kubectl cp /tmp/src.tar.gz "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/tmp/src.tar.gz"
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /app
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- tar -xzf /tmp/src.tar.gz -C /app
+
+      - name: Run Buildozer in Pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Running Buildozer inside the container..."
+          # For example, we assume the buildozer.spec is inside /app or /app/android_app:
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- sh -c "cd /app && buildozer android debug"
+
+      - name: Copy APK from Pod
+        run: |
+          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Copying APK back to GitHub Actions runner..."
+          # Adjust the output path and filenames to match your project
+          # Commonly, buildozer might put the APK under /app/bin/<appname>-debug.apk or /app/bin/*.apk
+          kubectl cp "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/app/bin" /tmp/apk_bin
+          ls -l /tmp/apk_bin
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Built-APK
+          path: /tmp/apk_bin
+
       - name: Cleanup Ephemeral Namespace
         if: always()
         run: |
