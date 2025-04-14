@@ -55,19 +55,24 @@ RUN wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477
     && unzip -q commandlinetools-linux-9477386_latest.zip \
     && rm commandlinetools-linux-9477386_latest.zip
 
-# Because the cmdline-tools are inside a folder named "cmdline-tools" again
-# we rename them "latest" or "tools" to keep sdkmanager at a stable path
+# Rename for easier path handling
 RUN mv cmdline-tools tools
 
-# Accept licenses and install a minimal set of packages.  This can be minimal
-# because buildozer might still download additional components
-# as needed. But at least sdkmanager must exist.
+# Symlink to legacy path for Buildozer compatibility
+RUN mkdir -p $ANDROID_HOME/tools && \
+    ln -s $ANDROID_HOME/cmdline-tools/tools $ANDROID_HOME/tools
+
+# Update PATH and install required SDK packages
 ENV PATH=$ANDROID_HOME/cmdline-tools/tools/bin:$PATH
 RUN yes | sdkmanager \
     "platform-tools" \
     "platforms;android-33" \
     "build-tools;33.0.2" \
     "ndk;25.2.9519653"
+
+# Optional: Tell Buildozer where the NDK is
+ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
+ENV PATH=$NDK_HOME:$PATH
 
 # Create final working dir
 WORKDIR /app
