@@ -8,8 +8,8 @@ on:
 
 env:
   GH_ACTOR: ${{ github.actor }}
-  IMAGE_NAME: "arm64_v4"
-  IMAGE_TAG: "v4"
+  IMAGE_NAME: "arm64_v5"
+  IMAGE_TAG: "v5"
   # comment block to trigger github actions - 
 
 jobs:
@@ -63,15 +63,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PIPELINE }}
         run: |
           echo "Ensuring GHCR package is public..."
-          OWNER="scottiepowell"
+          # The 'package name' is everything after ghcr.io/scottiepowell/.
+          # So if your image is ghcr.io/scottiepowell/android_app/arm64_v3:v3,
+          # the package name is "android_app/arm64_v3".
           PACKAGE_NAME="android_app/arm64_v3"
+          
+          # Encode the slash => 'android_app%2Farm64_v3'
           PACKAGE_NAME_ENCODED="$(echo "$PACKAGE_NAME" | sed 's|/|%2F|g')"
           echo "PACKAGE_NAME_ENCODED=${PACKAGE_NAME_ENCODED}"
-
+      
+          # For a user-owned package, we call /user/packages/container/<encoded>
           gh api \
-            --method PATCH \
+            -X PATCH \
             -H "Accept: application/vnd.github+json" \
-            "/users/${OWNER}/packages/container/${PACKAGE_NAME_ENCODED}/visibility" \
+            "/user/packages/container/${PACKAGE_NAME_ENCODED}" \
             -f visibility=public
 
   ephemeral-test:
