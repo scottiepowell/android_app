@@ -10,7 +10,6 @@ env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64_v6"
   IMAGE_TAG: "v6"
-  # comment block to trigger github actions - 
 
 jobs:
   build-image:
@@ -25,6 +24,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # Log in to GHCR so we can push the image
       - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
@@ -32,6 +32,7 @@ jobs:
           username: ${{ env.GH_ACTOR }}
           password: ${{ secrets.GH_PIPELINE }}
 
+      # Check if the image already exists in GHCR (skip build if so)
       - name: Check if Custom Image Exists in GHCR
         id: check_image
         run: |
@@ -47,6 +48,7 @@ jobs:
             echo "Image does not exist in GHCR."
           fi
 
+      # Build and push to GHCR if it doesn't exist yet
       - name: Build and Push Docker Image
         if: steps.check_image.outputs.exists == 'false'
         uses: docker/build-push-action@v4
@@ -57,27 +59,9 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-      - name: Make GHCR Package Public
-        if: steps.check_image.outputs.exists == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GH_PIPELINE }}
-        run: |
-          echo "Ensuring GHCR package is public..."
-          # The 'package name' is everything after ghcr.io/scottiepowell/.
-          # So if your image is ghcr.io/scottiepowell/android_app/arm64_v3:v3,
-          # the package name is "android_app/arm64_v3".
-          PACKAGE_NAME="android_app/arm64_v3"
-          
-          # Encode the slash => 'android_app%2Farm64_v3'
-          PACKAGE_NAME_ENCODED="$(echo "$PACKAGE_NAME" | sed 's|/|%2F|g')"
-          echo "PACKAGE_NAME_ENCODED=${PACKAGE_NAME_ENCODED}"
-      
-          # For a user-owned package, we call /user/packages/container/<encoded>
-          gh api \
-            -X PATCH \
-            -H "Accept: application/vnd.github+json" \
-            "/user/packages/container/${PACKAGE_NAME_ENCODED}" \
-            -f visibility=public
+      - name: Skip Build as Image Already Exists
+        if: steps.check_image.outputs.exists == 'true'
+        run: echo "Image already exists, skipping build."
 
   ephemeral-test:
     needs: build-image
@@ -102,7 +86,8 @@ jobs:
 
       - name: Install OCI CLI
         run: |
-          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults --install-dir /usr/local/bin
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" \
+            -- --accept-all-defaults --install-dir /usr/local/bin
 
       - name: Link OCI CLI to PATH
         run: |
@@ -110,22 +95,25 @@ jobs:
 
       - name: Setup OCI Config and Generate Kubeconfig
         run: |
-          # Set up OCI configuration
           mkdir -p ~/.oci
           echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
           chmod 600 ~/.oci/oci_api_key.pem
           python setup_oci_config.py
           echo "OCI config:"
           cat ~/.oci/config
-          # Obtain the first cluster's ID using OCI CLI
+          
           CLUSTER_ID=$(oci ce cluster list --compartment-id $OCI_TENANCY --query 'data[0].id' --raw-output)
           if [ -z "$CLUSTER_ID" ]; then
             echo "Error: No cluster found!" >&2
             exit 1
           fi
           echo "Found cluster: $CLUSTER_ID"
-          # Generate kubeconfig file using OCI CLI
-          oci ce cluster create-kubeconfig --cluster-id $CLUSTER_ID --file /tmp/kubeconfig_test --region $OCI_REGION
+          
+          oci ce cluster create-kubeconfig \
+            --cluster-id $CLUSTER_ID \
+            --file /tmp/kubeconfig_test \
+            --region $OCI_REGION
+          
           echo "KUBECONFIG=/tmp/kubeconfig_test" >> $GITHUB_ENV
           echo "Kubeconfig generated successfully."
 
@@ -139,6 +127,23 @@ jobs:
             echo "Error: Failed to create namespace ${EPHEMERAL_NAMESPACE}" >&2
             exit 1
           fi
+
+      # Create a docker-registry secret with your GHCR credentials
+      # and patch the default service account to use it as imagePullSecrets.
+      - name: Create Private GHCR Pull Secret
+        run: |
+          echo "Creating docker-registry secret in ephemeral namespace for GHCR..."
+          kubectl create secret docker-registry ghcr-pull-secret \
+            --docker-server=ghcr.io \
+            --docker-username="${{ env.GH_ACTOR }}" \
+            --docker-password="${{ secrets.GH_PIPELINE }}" \
+            --docker-email="someemail@example.com" \
+            --namespace="${EPHEMERAL_NAMESPACE}"
+
+          echo "Patching default service account to use the pull secret..."
+          kubectl patch serviceaccount default \
+            -n "${EPHEMERAL_NAMESPACE}" \
+            -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
 
       - name: Deploy Test Pod Using Custom Image
         id: deploy_pod
@@ -164,7 +169,8 @@ jobs:
             exit 1
           fi
           echo "Waiting for pod ${POD_NAME} to be ready..."
-          if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}" --timeout=60s; then
+          if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" \
+            --namespace "${EPHEMERAL_NAMESPACE}" --timeout=60s; then
             echo "Error: Pod ${POD_NAME} did not become ready in time" >&2
             kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
             exit 1
