@@ -205,7 +205,7 @@ jobs:
       
           # 3) Symlink 'sdkmanager' to legacy tools/bin path
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /root/.buildozer/android/platform/android-sdk/tools/bin
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ln -sf /root/.buildozer/android/platform/android-sdk/cmdline-tools/tools/bin/sdkmanager /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- sh -c 'if [ ! -e /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager ]; then ln -s /root/.buildozer/android/platform/android-sdk/cmdline-tools/tools/bin/sdkmanager /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager; fi'
       
           # Show the final synergy:
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ls -l /root/.buildozer/android/platform/android-sdk/tools/bin
