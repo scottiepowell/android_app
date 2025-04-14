@@ -1,17 +1,45 @@
-[app]
-title = whats_in_the_box
-package.name = kivyapp
-package.domain = org.box
-source.dir = .
-requirements = python3,kivy,sqlalchemy,click,sqlite3
-icon.filename = assets/pencil.png
-presplash.filename = assets/pencil.png
-android.permissions = INTERNET
-version = 0.0.1
-orientation = portrait
-source.include_patterns = src/*, assets/pencil.png
+FROM ubuntu:22.04
 
-[buildozer]
-storage_dir = /mnt/storage/.buildozer
-log_level = 2
-warn_on_root = 0
+LABEL org.opencontainers.image.source="https://github.com/scottiepowell/android_app"
+
+RUN apt update && apt install -y \
+    python3-pip \
+    python3-distutils \
+    python3-dev \
+    git \
+    openjdk-11-jdk \
+    unzip \
+    zip \
+    wget \
+    build-essential \
+    libncurses5 \
+    libffi-dev \
+    libssl-dev \
+    libsqlite3-dev \
+    zlib1g-dev \
+    libjpeg-dev \
+    python3-setuptools \
+    python3-virtualenv \
+    && pip3 install --upgrade pip
+
+ENV PIP_ROOT_USER_ACTION=ignore
+
+# Install Buildozer and all the packages it tries to use:
+RUN pip3 install --no-cache-dir \
+    buildozer \
+    cython \
+    appdirs \
+    colorama>=0.3.3 \
+    jinja2 \
+    "sh>=1.10,<2.0; sys_platform!='win32'" \
+    build \
+    toml \
+    packaging \
+    setuptools
+
+ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
+RUN mkdir -p $ANDROID_HOME
+
+WORKDIR /app
+COPY . /app
+
