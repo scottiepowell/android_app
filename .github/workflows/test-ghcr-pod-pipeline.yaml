@@ -222,21 +222,24 @@ jobs:
           POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
           kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- ant -version
       
-      - name: Prepare Android Build Environment (Dummy Spec)
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Preparing environment using dummy buildozer.spec in pod ${POD_NAME}..."
-          
-          # Copy dummy spec from /app (ensure dummy_buildozer.spec is in your repo)
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- sh -c "cp /.github/test/dummy_buildozer.spec /app/buildozer.spec"
-          
-          # Create an empty dummy source directory inside the container
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- sh -c "mkdir -p /tmp/dummy-src && echo '' > /tmp/dummy-src/dummy.txt"
-          
-          # Run Buildozer using the dummy spec; ignore errors so that the job continues.
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- sh -c "export P4A_BUILD_TOOLS_REVISION=33.0.2; cd /app && buildozer android debug || true"
-          
-          echo "Environment preparation complete."
+          - name: Prepare Android Build Environment (Dummy Spec)
+          run: |
+            POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+            echo "Preparing environment using dummy buildozer.spec in pod ${POD_NAME}..."
+        
+            # ✅ Use kubectl cp to copy FROM runner TO pod (not using exec to cp from inside the pod)
+            kubectl cp .github/test/dummy_buildozer.spec "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/app/buildozer.spec"
+        
+            # Create dummy source dir & file
+            kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
+              sh -c "mkdir -p /tmp/dummy-src && echo 'print(\"hello\")' > /tmp/dummy-src/main.py"
+        
+            # Run buildozer with pinned toolchain; ignore expected failure
+            kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
+              sh -c "export P4A_BUILD_TOOLS_REVISION=33.0.2 && cd /app && buildozer android debug || echo 'Expected dummy build failure'"
+        
+            echo "Dummy build environment setup complete."
+        
         
       - name: Run Actual Buildozer Build
         run: |
