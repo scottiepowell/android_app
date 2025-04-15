@@ -239,6 +239,21 @@ jobs:
             sh -c "export P4A_BUILD_TOOLS_REVISION=33.0.2 && cd /app && buildozer android debug || echo 'Expected dummy build failure'"
       
           echo "Dummy build environment setup complete."
+      
+      - name: Restore Real buildozer.spec
+        run: |
+          POD_NAME=$(kubectl get pods -n "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Copying real buildozer.spec from repo root to /app in pod ${POD_NAME}..."
+      
+          # Copy the REAL spec from your repository root -> ephemeral container
+          kubectl cp buildozer.spec \
+            "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/app/buildozer.spec"
+        
+      - name: Check Final buildozer.spec in Pod (Optional Debug)
+        run: |
+          POD_NAME=$(kubectl get pods -n "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
+          echo "Contents of /app/buildozer.spec in pod ${POD_NAME}:"
+          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- cat /app/buildozer.spec
         
       - name: Run Actual Buildozer Build
         run: |
