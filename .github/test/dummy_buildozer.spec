@@ -1,4 +1,5 @@
 [app]
+version = 0.0.1
 title = dummy
 package.name = dummy
 package.domain = org.example
