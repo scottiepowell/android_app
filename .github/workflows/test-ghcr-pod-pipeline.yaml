@@ -68,219 +68,150 @@ jobs:
   ephemeral-test:
     needs: build-image
     runs-on: ubuntu-latest
+
     env:
-      OCI_USER: ${{ secrets.OCI_USER }}
-      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-      OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
-      OCI_REGION: ${{ secrets.OCI_REGION }}
-      OCI_KEY_FILE: /home/runner/.oci/oci_api_key.pem
+      # OCI + GHCR creds …
+      OCI_USER:          ${{ secrets.OCI_USER }}
+      OCI_FINGERPRINT:   ${{ secrets.OCI_FINGERPRINT }}
+      OCI_TENANCY:       ${{ secrets.OCI_TENANCY }}
+      OCI_REGION:        ${{ secrets.OCI_REGION }}
+      OCI_KEY_FILE:      /home/runner/.oci/oci_api_key.pem
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    # ────────────────────────────────────────────────────────────────
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-      - name: Install Python Dependencies
-        run: pip install python-dotenv oci
+    - name: Install Python Dependencies
+      run: pip install python-dotenv oci
 
-      - name: Install OCI CLI
-        run: |
-          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" \
-            -- --accept-all-defaults --install-dir /usr/local/bin
+    # --- OCI CLI installation (unchanged) --------------------------
+    - name: Install OCI CLI
+      run: |
+        curl -Ls https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh |
+          bash -s -- --accept-all-defaults --install-dir /usr/local/bin
+    - name: Link OCI CLI to PATH
+      run: sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
 
-      - name: Link OCI CLI to PATH
-        run: |
-          sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
+    # --- generate kube‑config (unchanged) --------------------------
+    - name: Setup OCI Config and Generate Kubeconfig
+      run: |
+        mkdir -p ~/.oci
+        echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
+        chmod 600 ~/.oci/oci_api_key.pem
+        python setup_oci_config.py
 
-      - name: Setup OCI Config and Generate Kubeconfig
-        run: |
-          mkdir -p ~/.oci
-          echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
-          chmod 600 ~/.oci/oci_api_key.pem
-          python setup_oci_config.py
-          echo "OCI config:"
-          cat ~/.oci/config
-          
-          CLUSTER_ID=$(oci ce cluster list --compartment-id $OCI_TENANCY --query 'data[0].id' --raw-output)
-          if [ -z "$CLUSTER_ID" ]; then
-            echo "Error: No cluster found!" >&2
-            exit 1
-          fi
-          echo "Found cluster: $CLUSTER_ID"
-          
-          oci ce cluster create-kubeconfig \
-            --cluster-id $CLUSTER_ID \
-            --file /tmp/kubeconfig_test \
-            --region $OCI_REGION
-          
-          echo "KUBECONFIG=/tmp/kubeconfig_test" >> $GITHUB_ENV
-          echo "Kubeconfig generated successfully."
+        CLUSTER_ID=$(oci ce cluster list \
+                      --compartment-id "$OCI_TENANCY" \
+                      --query 'data[0].id' --raw-output)
+        echo "Found cluster: $CLUSTER_ID"
 
-      - name: Create Ephemeral Namespace
-        id: create_ns
-        run: |
-          EPHEMERAL_NAMESPACE="build-ns-$(date +%s)"
-          echo "EPHEMERAL_NAMESPACE=${EPHEMERAL_NAMESPACE}" >> $GITHUB_ENV
-          echo "Creating ephemeral namespace: ${EPHEMERAL_NAMESPACE}"
-          if ! kubectl create namespace "${EPHEMERAL_NAMESPACE}"; then
-            echo "Error: Failed to create namespace ${EPHEMERAL_NAMESPACE}" >&2
-            exit 1
-          fi
+        oci ce cluster create-kubeconfig \
+          --cluster-id "$CLUSTER_ID" \
+          --file /tmp/kubeconfig_test \
+          --region "$OCI_REGION"
 
-      # Create a docker-registry secret with your GHCR credentials
-      # and patch the default service account to use it as imagePullSecrets.
-      - name: Create Private GHCR Pull Secret
-        run: |
-          echo "Creating docker-registry secret in ephemeral namespace for GHCR..."
-          kubectl create secret docker-registry ghcr-pull-secret \
-            --docker-server=ghcr.io \
-            --docker-username="${{ env.GH_ACTOR }}" \
-            --docker-password="${{ secrets.GH_PIPELINE }}" \
-            --docker-email="someemail@example.com" \
-            --namespace="${EPHEMERAL_NAMESPACE}"
+        echo "KUBECONFIG=/tmp/kubeconfig_test" >> "$GITHUB_ENV"
 
-          echo "Patching default service account to use the pull secret..."
-          kubectl patch serviceaccount default \
-            -n "${EPHEMERAL_NAMESPACE}" \
-            -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
+    # --- create an ephemeral namespace -----------------------------
+    - name: Create Ephemeral Namespace
+      run: |
+        EPHEMERAL_NAMESPACE="build-ns-$(date +%s)"
+        echo "EPHEMERAL_NAMESPACE=$EPHEMERAL_NAMESPACE" >> "$GITHUB_ENV"
+        kubectl create ns "$EPHEMERAL_NAMESPACE"
 
-      - name: Deploy Test Pod Using Custom Image
-        id: deploy_pod
-        run: |
-          echo "Deploying test pod to namespace ${EPHEMERAL_NAMESPACE}"
-          IMAGE="ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
-          echo "Using image: $IMAGE"
-          
-          # Replace IMAGE_PLACEHOLDER in the manifest
-          sed "s|IMAGE_PLACEHOLDER|${IMAGE}|g" .github/test/ghcr-test-pod.yaml > /tmp/ghcr-test-pod.yaml
-          
-          if ! kubectl apply -f /tmp/ghcr-test-pod.yaml --namespace "${EPHEMERAL_NAMESPACE}"; then
-            echo "Error: Failed to deploy test pod" >&2
-            exit 1
-          fi
+    # --- GHCR pull secret so the cluster can pull your image -------
+    - name: Create Private GHCR Pull Secret
+      run: |
+        kubectl create secret docker-registry ghcr-pull-secret \
+          --docker-server=ghcr.io \
+          --docker-username="${{ github.actor }}" \
+          --docker-password='${{ secrets.GH_PIPELINE }}' \
+          --docker-email=noreply@github.com \
+          --namespace "$EPHEMERAL_NAMESPACE"
 
-      - name: Wait for Test Pod to be Ready
-        id: wait_pod
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          if [ -z "$POD_NAME" ]; then
-            echo "Error: No pod found in namespace ${EPHEMERAL_NAMESPACE}" >&2
-            exit 1
-          fi
-          echo "Waiting for pod ${POD_NAME} to be ready..."
-          if ! kubectl wait --for=condition=Ready pod/"${POD_NAME}" \
-            --namespace "${EPHEMERAL_NAMESPACE}" --timeout=300s; then
-            echo "Error: Pod ${POD_NAME} did not become ready in time" >&2
-            kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
-            exit 1
-          fi
+        kubectl patch sa default \
+          -n "$EPHEMERAL_NAMESPACE" \
+          -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
 
-      - name: Log Test Pod Details
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Pod details for ${POD_NAME}:"
-          kubectl describe pod "${POD_NAME}" --namespace "${EPHEMERAL_NAMESPACE}"
+    # --- deploy the (arm64) build container ------------------------
+    - name: Deploy Test Pod Using Custom Image
+      run: |
+        IMAGE="ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+        sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" .github/test/ghcr-test-pod.yaml \
+          > /tmp/ghcr-test-pod.yaml
+        kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
 
-      - name: Copy Source Code to Pod
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Tar and copy code to container..."
-          tar -czf /tmp/src.tar.gz .
-          kubectl cp /tmp/src.tar.gz "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/tmp/src.tar.gz"
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /app
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- tar -xzf /tmp/src.tar.gz -C /app
-      
-      - name: Create sdkmanager symlinks inside the ephemeral container
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Fixing cmdline-tools path in the ephemeral pod..."
-          # 1) Remove any old /tools directory
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- rm -rf /root/.buildozer/android/platform/android-sdk/tools
-      
-          # 2) Symlink 'tools'
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ln -s /root/.buildozer/android/platform/android-sdk/cmdline-tools/tools /root/.buildozer/android/platform/android-sdk/tools
-      
-          # 3) Symlink 'sdkmanager' to legacy tools/bin path
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- mkdir -p /root/.buildozer/android/platform/android-sdk/tools/bin
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- sh -c 'if [ ! -e /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager ]; then ln -s /root/.buildozer/android/platform/android-sdk/cmdline-tools/tools/bin/sdkmanager /root/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager; fi'
-      
-          # Show the final synergy:
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "${POD_NAME}" -- ls -l /root/.buildozer/android/platform/android-sdk/tools/bin
-    
-      - name: Verify sdkmanager path in pod
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Checking for sdkmanager at /root/.buildozer/android/platform/android-sdk/tools/bin..."
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
-            ls -l /root/.buildozer/android/platform/android-sdk/tools/bin || true
-     
-      - name: Verify ANT installation in pod
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- ant -version
-      
-      - name: Prepare Android Build Environment (Dummy Spec)
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Preparing environment using dummy buildozer.spec in pod ${POD_NAME}..."
-      
-          # ✅ Use kubectl cp to copy FROM runner TO pod (not using exec to cp from inside the pod)
-          kubectl cp .github/test/dummy_buildozer.spec "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/app/buildozer.spec"
-      
-          # Create dummy source dir & file
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
-            sh -c "mkdir -p /tmp/dummy-src && echo 'print(\"hello\")' > /tmp/dummy-src/main.py"
-      
-          # Run buildozer with pinned toolchain; ignore expected failure
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- \
-            sh -c "export P4A_BUILD_TOOLS_REVISION=33.0.2 && cd /app && buildozer android debug || echo 'Expected dummy build failure'"
-      
-          echo "Dummy build environment setup complete."
-      
-      - name: Restore Real buildozer.spec
-        run: |
-          POD_NAME=$(kubectl get pods -n "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Copying real buildozer.spec from repo root to /app in pod ${POD_NAME}..."
-      
-          # Copy the REAL spec from your repository root -> ephemeral container
-          kubectl cp buildozer.spec \
-            "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/app/buildozer.spec"
-        
-      - name: Check Final buildozer.spec in Pod (Optional Debug)
-        run: |
-          POD_NAME=$(kubectl get pods -n "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Contents of /app/buildozer.spec in pod ${POD_NAME}:"
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- cat /app/buildozer.spec
-        
-      - name: Run Actual Buildozer Build
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Running actual Buildozer build in pod ${POD_NAME}..."
-          kubectl exec -n "${EPHEMERAL_NAMESPACE}" "$POD_NAME" -- sh -c "export P4A_BUILD_TOOLS_REVISION=33.0.2; cd /app && buildozer android debug"
+    # --- wait for container(s) to be ready -------------------------
+    - name: Wait for Test Pod to be Ready
+      id: wait_pod
+      run: |
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+        echo "POD_NAME=$POD" >> "$GITHUB_ENV"
 
-      - name: Copy APK from Pod
-        run: |
-          POD_NAME=$(kubectl get pods --namespace "${EPHEMERAL_NAMESPACE}" -o jsonpath='{.items[0].metadata.name}')
-          echo "Copying APK back to GitHub Actions runner..."
-          # Adjust the output path and filenames to match your project
-          # Commonly, buildozer might put the APK under /app/bin/<appname>-debug.apk or /app/bin/*.apk
-          kubectl cp "${EPHEMERAL_NAMESPACE}/${POD_NAME}:/app/bin" /tmp/apk_bin
-          ls -l /tmp/apk_bin
+        set +e
+        kubectl wait \
+          --for=condition=ContainersReady \
+          --timeout=300s pod/"$POD" -n "$EPHEMERAL_NAMESPACE"
+        READY=$?
+        set -e
 
-      - name: Upload APK as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Built-APK
-          path: /tmp/apk_bin
+        if [ "$READY" -ne 0 ]; then
+          echo "::warning::Pod did not reach ContainersReady – dumping logs"
+          kubectl logs "$POD" -n "$EPHEMERAL_NAMESPACE" || true
+          kubectl describe pod "$POD" -n "$EPHEMERAL_NAMESPACE" || true
+          exit 1
+        fi
 
-      - name: Cleanup Ephemeral Namespace
-        if: always()
-        run: |
-          echo "Cleaning up: Deleting namespace ${EPHEMERAL_NAMESPACE}"
-          if ! kubectl delete namespace "${EPHEMERAL_NAMESPACE}" --wait; then
-            echo "Error: Failed to delete namespace ${EPHEMERAL_NAMESPACE}" >&2
-            exit 1
-          fi
+    # --- verify runtime bits that Buildozer needs ------------------
+    - name: Verify ANT & sdkmanager in pod
+      run: |
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- ant -version
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
+          bash -c 'command -v sdkmanager && sdkmanager --version'
+
+    # --- copy your repo into /app inside the container -------------
+    - name: Copy Source Code to Pod
+      run: |
+        tar -czf /tmp/src.tar.gz .
+        kubectl cp /tmp/src.tar.gz "$EPHEMERAL_NAMESPACE/$POD_NAME:/tmp/src.tar.gz"
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
+          bash -c 'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
+
+    # --- show the spec (debug) -------------------------------------
+    - name: Show buildozer.spec in Pod
+      run: |
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- cat /app/buildozer.spec
+
+    # --- Build the APK ---------------------------------------------
+    - name: Run Buildozer
+      run: |
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- bash -c '
+          set -e
+          export P4A_BUILD_TOOLS_REVISION=33.0.2
+          cd /app
+          buildozer android debug
+        '
+
+    # --- fetch the resulting APK(s) --------------------------------
+    - name: Copy APK from Pod
+      run: |
+        kubectl cp "$EPHEMERAL_NAMESPACE/$POD_NAME:/app/bin" /tmp/apk_bin
+        ls -lh /tmp/apk_bin
+
+    - name: Upload APK as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Built-APK
+        path: /tmp/apk_bin
+
+    # --- clean up --------------------------------------------------
+    - name: Cleanup Ephemeral Namespace
+      if: always()
+      run: |
+        kubectl delete ns "$EPHEMERAL_NAMESPACE" --wait
