@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM --platform=linux/amd64 ubuntu:22.04
 
 LABEL org.opencontainers.image.source="https://github.com/scottiepowell/android_app"
 
