@@ -68,6 +68,8 @@ RUN yes | sdkmanager \
 
 ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
 ENV PATH="$NDK_HOME:$PATH"
+# Skip platform validation for host binaries
+ENV P4A_USE_HOST_PYTHON=1
 
 # Legacy symlink fixes for sdkmanager detection
 RUN mkdir -p $ANDROID_HOME/tools/bin && \
