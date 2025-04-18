@@ -176,21 +176,25 @@ jobs:
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
           bash -c 'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
     
-    - name: Run python-for-android build
+    - name: Build APK with p4a
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -lc "
+    
+        # use bash -c   (no -l → no login‑profile that clobbers PATH)
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c '
           set -e
-
-          export ANDROIDSDK=\$ANDROID_HOME
-          export ANDROIDNDK=\$NDK_HOME
-
+    
+          export ANDROIDSDK=$ANDROID_HOME
+          export ANDROIDNDK=$NDK_HOME
+    
+          # make sure sdkmanager is visible even if PATH was reset
+          export PATH=$ANDROIDSDK/tools/bin:$ANDROIDSDK/cmdline-tools/tools/bin:$PATH
+    
           cd /app
-
+    
           p4a apk \
-            --sdk-dir=\$ANDROIDSDK \
-            --ndk-dir=\$ANDROIDNDK \
-            --ndk-version=25.2.9519653 \
+            --sdk-dir=$ANDROIDSDK \
+            --ndk-dir=$ANDROIDNDK \
             --build-tools-version=33.0.2 \
             --dist-name=whats_in_the_box \
             --bootstrap=sdl2 \
@@ -198,10 +202,9 @@ jobs:
             --arch=arm64-v8a \
             --android-api=33 \
             --package=org.box.whats_in_the_box \
-            --name=\"What's in the Box\" \
+            --name="What's in the Box" \
             --version=0.0.1
-          " 
-
+        '
     - name: Copy APK from Pod
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
