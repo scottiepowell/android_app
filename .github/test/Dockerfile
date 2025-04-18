@@ -66,6 +66,12 @@ RUN yes | sdkmanager \
     "build-tools;33.0.2" \
     "ndk;25.2.9519653"
 
+# Block 36.0.0 from being downloaded
+RUN rm -rf $ANDROID_HOME/build-tools/36.0.0 && \
+    mkdir -p $ANDROID_HOME/build-tools/36.0.0 && \
+    touch $ANDROID_HOME/build-tools/36.0.0/aidl && \
+    chmod +x $ANDROID_HOME/build-tools/36.0.0/aidl
+
 ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
 ENV PATH="$NDK_HOME:$PATH"
 # Skip platform validation for host binaries
