@@ -80,6 +80,11 @@ RUN for v in $(ls $ANDROID_HOME/build-tools); do \
       chmod +x $ANDROID_HOME/build-tools/$v/aidl; \
     done
 
+# ── *** NEW: stub the old “android” tool too, so p4a’s check passes ──
+RUN printf '%s\n' '#!/usr/bin/env sh' 'exit 0' \
+     > $ANDROID_HOME/tools/android \
+ && chmod +x $ANDROID_HOME/tools/android
+
 # ── Your app sources ───────────────────────────────────────────
 WORKDIR /app
 COPY . /app
