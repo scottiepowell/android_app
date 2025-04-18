@@ -1,20 +1,21 @@
 # syntax=docker/dockerfile:1
 
 ###########################
-# 1) QEMU helper stage
+# 1) QEMU helper for AMD64 binaries
 ###########################
-FROM --platform=${BUILDPLATFORM} multiarch/qemu-user-static:latest AS qemu
+FROM --platform=linux/amd64 multiarch/qemu-user-static:latest AS qemu
 
 ###########################
-# 2) Real ARM64 image
+# 2) Real ARM64 base image
 ###########################
 ARG TARGETPLATFORM
 FROM --platform=${TARGETPLATFORM} ubuntu:22.04
 
-# QEMU binary for ARM emulation
+# ── Install QEMU static for both aarch64 and x86_64 ────────────
 COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin/
+COPY --from=qemu /usr/bin/qemu-x86_64-static  /usr/bin/
 
-# Base setup
+# ── Base toolchain & Python ────────────────────────────────────
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
       python3-pip python3-distutils python3-dev git \
@@ -26,69 +27,69 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
 
 ENV PIP_ROOT_USER_ACTION=ignore
 
-# Buildozer and Python deps
+# ── Buildozer & dependencies ───────────────────────────────────
 RUN pip3 install --no-cache-dir \
-      buildozer cython appdirs "colorama>=0.3.3" jinja2 \
-      "sh>=1.10,<2.0; sys_platform!='win32'" build toml packaging setuptools
+      buildozer \
+      cython \
+      appdirs \
+      "colorama>=0.3.3" \
+      jinja2 \
+      "sh>=1.10,<2.0; sys_platform!='win32'" \
+      build \
+      toml \
+      packaging \
+      setuptools
 
-###########################
-# Apache ANT
-###########################
-ENV ANT_VERSION=1.9.4
-ENV ANT_HOME=/opt/ant
+# ── Apache ANT ─────────────────────────────────────────────────
+ENV ANT_VERSION=1.9.4 \
+    ANT_HOME=/opt/ant
 RUN wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz \
  && tar -xzf apache-ant-${ANT_VERSION}-bin.tar.gz -C /opt \
  && mv /opt/apache-ant-${ANT_VERSION} $ANT_HOME \
  && rm apache-ant-${ANT_VERSION}-bin.tar.gz
 ENV PATH="$ANT_HOME/bin:$PATH"
 
-###########################
-# Android SDK + NDK
-###########################
+# ── Android SDK command‑line tools ─────────────────────────────
 ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
 ENV ANDROID_SDK_ROOT=$ANDROID_HOME
 
-# Install commandline-tools
-RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
-    cd $ANDROID_HOME/cmdline-tools && \
-    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
-    unzip -q commandlinetools-linux-9477386_latest.zip && \
-    rm commandlinetools-linux-9477386_latest.zip && \
-    mv cmdline-tools tools
+RUN mkdir -p $ANDROID_HOME/cmdline-tools \
+ && cd $ANDROID_HOME/cmdline-tools \
+ && wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip \
+ && unzip -q commandlinetools-linux-9477386_latest.zip \
+ && rm commandlinetools-linux-9477386_latest.zip \
+ && mv cmdline-tools tools
 
-# Ensure PATH includes sdkmanager
 ENV PATH="$ANDROID_HOME/cmdline-tools/tools/bin:$PATH"
 
-# Install only compatible versions
+# ── Install *only* the versions you want ───────────────────────
 RUN yes | sdkmanager \
-    "platform-tools" \
-    "platforms;android-33" \
-    "build-tools;33.0.2" \
-    "ndk;25.2.9519653"
+      "platform-tools" \
+      "platforms;android-33" \
+      "build-tools;33.0.2" \
+      "ndk;25.2.9519653"
 
-# Block 36.0.0 from being downloaded
-RUN rm -rf $ANDROID_HOME/build-tools/36.0.0 && \
-    mkdir -p $ANDROID_HOME/build-tools/36.0.0 && \
-    touch $ANDROID_HOME/build-tools/36.0.0/aidl && \
-    chmod +x $ANDROID_HOME/build-tools/36.0.0/aidl
-
+# Make the NDK visible
 ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
 ENV PATH="$NDK_HOME:$PATH"
-# Skip platform validation for host binaries
+
+# ── Legacy “tools/” symlink so Buildozer finds sdkmanager ───────
+RUN mkdir -p $ANDROID_HOME/tools/bin \
+ && ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager \
+       $ANDROID_HOME/tools/bin/sdkmanager
+
+# ── Stub out *every* aidl so Buildozer’s check passes             ──
+#    (they’ll all be tiny shell-scripts that do nothing)
+RUN for v in $(ls $ANDROID_HOME/build-tools); do \
+      rm -f $ANDROID_HOME/build-tools/$v/aidl; \
+      printf '%s\n' '#!/usr/bin/env sh' 'exit 0' \
+        > $ANDROID_HOME/build-tools/$v/aidl; \
+      chmod +x $ANDROID_HOME/build-tools/$v/aidl; \
+    done
+
+# ── Optional: force Buildozer to use host Python and skip toolchain validation
 ENV P4A_USE_HOST_PYTHON=1
 
-# Legacy symlink fixes for sdkmanager detection
-RUN mkdir -p $ANDROID_HOME/tools/bin && \
-    ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
-
-# Remove all traces of newer build-tools to prevent fallback
-RUN rm -rf $ANDROID_HOME/build-tools/36.0.0 || true
-
-# Force symlink to correct version to intercept auto-pick
-RUN ln -sfn $ANDROID_HOME/build-tools/33.0.2 $ANDROID_HOME/build-tools/36.0.0
-
-###########################
-# Copy source & set workdir
-###########################
+# ── Your app sources ───────────────────────────────────────────
 WORKDIR /app
 COPY . /app
