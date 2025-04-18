@@ -13,7 +13,6 @@ FROM --platform=${TARGETPLATFORM} ubuntu:22.04
 
 # ── Install QEMU static for both aarch64 and x86_64 ────────────
 COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin/
-COPY --from=qemu /usr/bin/qemu-x86_64-static  /usr/bin/
 
 # ── Base toolchain & Python ────────────────────────────────────
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
