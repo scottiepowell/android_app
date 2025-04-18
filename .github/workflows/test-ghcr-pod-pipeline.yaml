@@ -168,13 +168,6 @@ jobs:
           exit 1
         fi
 
-    # --- verify runtime bits that Buildozer needs ------------------
-    - name: Verify ANT & sdkmanager in pod
-      run: |
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- ant -version
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
-          bash -c 'command -v sdkmanager && sdkmanager --version'
-
     # --- copy your repo into /app inside the container -------------
     - name: Copy Source Code to Pod
       run: |
@@ -194,20 +187,20 @@ jobs:
 
           cd /app
 
-          python3 -m pythonforandroid \
-            --dist_name=whats_in_the_box \
+          p4a apk \
+            --sdk-dir=\$ANDROIDSDK \
+            --ndk-dir=\$ANDROIDNDK \
+            --ndk-version=25.2.9519653 \
+            --build-tools-version=33.0.2 \
+            --dist-name=whats_in_the_box \
             --bootstrap=sdl2 \
             --requirements=kivy,sqlalchemy,click,sqlite3 \
-            --android_api=33 \
-            --sdk_dir=\$ANDROIDSDK \
-            --ndk_dir=\$ANDROIDNDK \
-            --ndk_version=25.2.9519653 \
-            --build_tools_version=33.0.2 \
             --arch=arm64-v8a \
+            --android-api=33 \
             --package=org.box.whats_in_the_box \
-            --version=0.0.1 \
-            apk
-        "
+            --name=\"What's in the Box\" \
+            --version=0.0.1
+          " 
 
     - name: Copy APK from Pod
       run: |
