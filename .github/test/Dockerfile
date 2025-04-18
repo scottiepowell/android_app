@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1               # enables ${TARGETPLATFORM} etc.
+# syntax=docker/dockerfile:1
 
 ###########################
 # 1) QEMU helper stage
@@ -6,18 +6,15 @@
 FROM --platform=${BUILDPLATFORM} multiarch/qemu-user-static:latest AS qemu
 
 ###########################
-# 2) Real arm64 image
+# 2) Real ARM64 image
 ###########################
 ARG TARGETPLATFORM
 FROM --platform=${TARGETPLATFORM} ubuntu:22.04
 
-# ── add the right QEMU static binary ─────────────────────────────
-# For arm64 builds TARGETPLATFORM = "linux/arm64", and the helper
-# we need is /usr/bin/qemu-aarch64-static .
-#
+# QEMU binary for ARM emulation
 COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin/
 
-# ── your original tool‑chain setup (unchanged) ───────────────────
+# Base setup
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
       python3-pip python3-distutils python3-dev git \
@@ -29,27 +26,29 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
 
 ENV PIP_ROOT_USER_ACTION=ignore
 
-# Buildozer & friends
+# Buildozer and Python deps
 RUN pip3 install --no-cache-dir \
       buildozer cython appdirs "colorama>=0.3.3" jinja2 \
       "sh>=1.10,<2.0; sys_platform!='win32'" build toml packaging setuptools
 
 ###########################
-# ANT
+# Apache ANT
 ###########################
-ENV ANT_VERSION=1.9.4             \
-    ANT_HOME=/opt/ant
+ENV ANT_VERSION=1.9.4
+ENV ANT_HOME=/opt/ant
 RUN wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz \
  && tar -xzf apache-ant-${ANT_VERSION}-bin.tar.gz -C /opt \
  && mv /opt/apache-ant-${ANT_VERSION} $ANT_HOME \
  && rm apache-ant-${ANT_VERSION}-bin.tar.gz
-ENV PATH="$ANT_HOME/bin:${PATH}"
+ENV PATH="$ANT_HOME/bin:$PATH"
 
 ###########################
 # Android SDK + NDK
 ###########################
 ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
 ENV ANDROID_SDK_ROOT=$ANDROID_HOME
+
+# Install commandline-tools
 RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
     cd $ANDROID_HOME/cmdline-tools && \
     wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
@@ -57,21 +56,28 @@ RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
     rm commandlinetools-linux-9477386_latest.zip && \
     mv cmdline-tools tools
 
-ENV PATH="$ANDROID_HOME/cmdline-tools/tools/bin:${PATH}"
+# Ensure PATH includes sdkmanager
+ENV PATH="$ANDROID_HOME/cmdline-tools/tools/bin:$PATH"
+
+# Install only compatible versions
 RUN yes | sdkmanager \
-      "platform-tools" \
-      "platforms;android-33" \
-      "build-tools;33.0.2" \
-      "ndk;25.2.9519653"
+    "platform-tools" \
+    "platforms;android-33" \
+    "build-tools;33.0.2" \
+    "ndk;25.2.9519653"
 
 ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
-ENV PATH="$NDK_HOME:${PATH}"
+ENV PATH="$NDK_HOME:$PATH"
+
+# Legacy symlink fixes for sdkmanager detection
+RUN mkdir -p $ANDROID_HOME/tools/bin && \
+    ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
+
+# Fix to force Buildozer to use build-tools 33.0.2 (even if 36.0.0 is present in the repo)
+RUN rm -rf $ANDROID_HOME/build-tools/36.0.0 || true
 
 ###########################
-# app source
+# Copy source & set workdir
 ###########################
 WORKDIR /app
 COPY . /app
-
-RUN mkdir -p $ANDROID_HOME/tools/bin && \
-    ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
