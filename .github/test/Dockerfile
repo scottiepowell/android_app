@@ -73,12 +73,10 @@ RUN mkdir -p $ANDROID_HOME/tools/bin \
  && ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager \
        $ANDROID_HOME/tools/bin/sdkmanager
 
-# stub out aidl so nothing ever tries to execute a non‑ARM binary
-RUN for v in $(ls $ANDROID_HOME/build-tools); do \
-      printf '%s\n' '#!/usr/bin/env sh' 'exit 0' \
-        > $ANDROID_HOME/build-tools/$v/aidl; \
-      chmod +x $ANDROID_HOME/build-tools/$v/aidl; \
-    done
+# ── Also expose sdkmanager at sdk-dir/bin/sdkmanager ─────
+RUN mkdir -p $ANDROID_HOME/bin \
+ && ln -sf $ANDROID_HOME/tools/bin/sdkmanager \
+       $ANDROID_HOME/bin/sdkmanager
 
 # ── Your app sources ───────────────────────────────────────────
 WORKDIR /app

@@ -11,7 +11,7 @@ on:
 env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v17"
+  IMAGE_TAG: "v18"
 
 jobs:
   build-image:
@@ -179,15 +179,22 @@ jobs:
     - name: Build APK with p4a
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c '
+        # inline export so nothing gets clobbered by login scripts:
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c "
           set -e
-          export ANDROIDSDK=$ANDROID_HOME
-          export ANDROIDNDK=$NDK_HOME
-          export PATH=$ANDROIDSDK/tools/bin:$ANDROIDSDK/cmdline-tools/tools/bin:$PATH
+          ANDROIDSDK=\$ANDROID_HOME
+          ANDROIDNDK=\$NDK_HOME
+          export PATH=\$ANDROIDSDK/tools/bin:\$ANDROIDSDK/cmdline-tools/tools/bin:\$ANDROIDSDK/bin:\$PATH
+    
+          echo '--- DEBUG:'
+          which sdkmanager && sdkmanager --version
+          ls -l \$ANDROIDSDK/tools/bin/sdkmanager \$ANDROIDSDK/bin/sdkmanager
+          echo '--- END DEBUG'
+    
           cd /app
           p4a apk \
-            --sdk-dir=$ANDROIDSDK \
-            --ndk-dir=$ANDROIDNDK \
+            --sdk-dir=\$ANDROIDSDK \
+            --ndk-dir=\$ANDROIDNDK \
             --build-tools-version=33.0.2 \
             --dist-name=whats_in_the_box \
             --bootstrap=sdl2 \
@@ -195,10 +202,10 @@ jobs:
             --arch=arm64-v8a \
             --android-api=33 \
             --package=org.box.whats_in_the_box \
-            --name='What'\''s in the Box' \
+            --name=\"What's in the Box\" \
             --version=0.0.1
-        '
-        
+        "
+
     - name: Copy APK from Pod
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
