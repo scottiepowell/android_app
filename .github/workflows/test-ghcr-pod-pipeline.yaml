@@ -11,7 +11,7 @@ on:
 env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v9"
+  IMAGE_TAG: "v10"
 
 jobs:
   build-image:
