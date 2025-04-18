@@ -11,7 +11,7 @@ on:
 env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v10"
+  IMAGE_TAG: "v11"
 
 jobs:
   build-image:
@@ -194,6 +194,7 @@ jobs:
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- bash -c '
           set -e
           export P4A_BUILD_TOOLS_REVISION=33.0.2
+          export P4A_USE_HOST_PYTHON=1
           cd /app
           buildozer android debug
         '
