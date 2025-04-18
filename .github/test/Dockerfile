@@ -72,3 +72,6 @@ ENV PATH="$NDK_HOME:${PATH}"
 ###########################
 WORKDIR /app
 COPY . /app
+
+RUN mkdir -p $ANDROID_HOME/tools/bin && \
+    ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
