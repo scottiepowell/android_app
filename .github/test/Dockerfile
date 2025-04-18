@@ -73,8 +73,11 @@ ENV PATH="$NDK_HOME:$PATH"
 RUN mkdir -p $ANDROID_HOME/tools/bin && \
     ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
 
-# Fix to force Buildozer to use build-tools 33.0.2 (even if 36.0.0 is present in the repo)
+# Remove all traces of newer build-tools to prevent fallback
 RUN rm -rf $ANDROID_HOME/build-tools/36.0.0 || true
+
+# Force symlink to correct version to intercept auto-pick
+RUN ln -sfn $ANDROID_HOME/build-tools/33.0.2 $ANDROID_HOME/build-tools/36.0.0
 
 ###########################
 # Copy source & set workdir
