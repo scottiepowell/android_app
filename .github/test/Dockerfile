@@ -11,7 +11,7 @@ FROM --platform=linux/amd64 multiarch/qemu-user-static:latest AS qemu
 ARG TARGETPLATFORM
 FROM --platform=${TARGETPLATFORM} ubuntu:22.04
 
-# ── Install QEMU static for both aarch64 and x86_64 ────────────
+# ── Install QEMU for ARM emulation ─────────────────────────────
 COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin/
 
 # ── Base toolchain & Python ────────────────────────────────────
@@ -26,20 +26,15 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
 
 ENV PIP_ROOT_USER_ACTION=ignore
 
-# ── Buildozer & dependencies ───────────────────────────────────
+# ── python‑for‑android & deps ─────────────────────────────────
 RUN pip3 install --no-cache-dir \
-      buildozer \
+      python-for-android \
       cython \
-      appdirs \
-      "colorama>=0.3.3" \
-      jinja2 \
-      "sh>=1.10,<2.0; sys_platform!='win32'" \
-      build \
-      toml \
-      packaging \
-      setuptools
+      packaging
 
-# ── Apache ANT ─────────────────────────────────────────────────
+###########################
+# Apache ANT (needed by p4a)
+###########################
 ENV ANT_VERSION=1.9.4 \
     ANT_HOME=/opt/ant
 RUN wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.tar.gz \
@@ -48,7 +43,9 @@ RUN wget -q https://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSIO
  && rm apache-ant-${ANT_VERSION}-bin.tar.gz
 ENV PATH="$ANT_HOME/bin:$PATH"
 
-# ── Android SDK command‑line tools ─────────────────────────────
+###########################
+# Android SDK + NDK
+###########################
 ENV ANDROID_HOME=/root/.buildozer/android/platform/android-sdk
 ENV ANDROID_SDK_ROOT=$ANDROID_HOME
 
@@ -61,33 +58,27 @@ RUN mkdir -p $ANDROID_HOME/cmdline-tools \
 
 ENV PATH="$ANDROID_HOME/cmdline-tools/tools/bin:$PATH"
 
-# ── Install *only* the versions you want ───────────────────────
+# install exactly what we need
 RUN yes | sdkmanager \
       "platform-tools" \
       "platforms;android-33" \
       "build-tools;33.0.2" \
       "ndk;25.2.9519653"
 
-# Make the NDK visible
 ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
 ENV PATH="$NDK_HOME:$PATH"
 
-# ── Legacy “tools/” symlink so Buildozer finds sdkmanager ───────
+# legacy “tools/” symlink so p4a finds sdkmanager
 RUN mkdir -p $ANDROID_HOME/tools/bin \
  && ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager \
        $ANDROID_HOME/tools/bin/sdkmanager
 
-# ── Stub out *every* aidl so Buildozer’s check passes             ──
-#    (they’ll all be tiny shell-scripts that do nothing)
+# stub out aidl so nothing ever tries to execute a non‑ARM binary
 RUN for v in $(ls $ANDROID_HOME/build-tools); do \
-      rm -f $ANDROID_HOME/build-tools/$v/aidl; \
       printf '%s\n' '#!/usr/bin/env sh' 'exit 0' \
         > $ANDROID_HOME/build-tools/$v/aidl; \
       chmod +x $ANDROID_HOME/build-tools/$v/aidl; \
     done
-
-# ── Optional: force Buildozer to use host Python and skip toolchain validation
-ENV P4A_USE_HOST_PYTHON=1
 
 # ── Your app sources ───────────────────────────────────────────
 WORKDIR /app

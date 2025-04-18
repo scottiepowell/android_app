@@ -11,7 +11,7 @@ on:
 env:
   GH_ACTOR: ${{ github.actor }}
   IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v14"
+  IMAGE_TAG: "v15"
 
 jobs:
   build-image:
@@ -182,28 +182,38 @@ jobs:
         kubectl cp /tmp/src.tar.gz "$EPHEMERAL_NAMESPACE/$POD_NAME:/tmp/src.tar.gz"
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
           bash -c 'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
-
-    # --- show the spec (debug) -------------------------------------
-    - name: Show buildozer.spec in Pod
+    
+    - name: Run python-for-android build
       run: |
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- cat /app/buildozer.spec
-
-    # --- Build the APK ---------------------------------------------
-    - name: Run Buildozer
-      run: |
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- bash -c '
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -lc "
           set -e
-          export P4A_BUILD_TOOLS_REVISION=33.0.2
-          export P4A_USE_HOST_PYTHON=1
-          cd /app
-          buildozer android debug
-        '
 
-    # --- fetch the resulting APK(s) --------------------------------
+          export ANDROIDSDK=\$ANDROID_HOME
+          export ANDROIDNDK=\$NDK_HOME
+
+          cd /app
+
+          python3 -m pythonforandroid \
+            --dist_name=whats_in_the_box \
+            --bootstrap=sdl2 \
+            --requirements=kivy,sqlalchemy,click,sqlite3 \
+            --android_api=33 \
+            --sdk_dir=\$ANDROIDSDK \
+            --ndk_dir=\$ANDROIDNDK \
+            --ndk_version=25.2.9519653 \
+            --build_tools_version=33.0.2 \
+            --arch=arm64-v8a \
+            --package=org.box.whats_in_the_box \
+            --version=0.0.1 \
+            apk
+        "
+
     - name: Copy APK from Pod
       run: |
-        kubectl cp "$EPHEMERAL_NAMESPACE/$POD_NAME:/app/bin" /tmp/apk_bin
-        ls -lh /tmp/apk_bin
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+        kubectl cp "${EPHEMERAL_NAMESPACE}/${POD}:/root/.local/share/python-for-android/dists/whats_in_the_box/outputs/apk" /tmp/apks
+        ls -l /tmp/apks
 
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
