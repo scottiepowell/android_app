@@ -202,7 +202,7 @@ jobs:
           cd /app
 
           echo "--- p4a sees these targets ---"
-          sdkmanager --list | grep "platforms;android"
+          sdkmanager --list | grep "platforms;android" || true
           echo "--------------------------------"
 
           p4a apk \
