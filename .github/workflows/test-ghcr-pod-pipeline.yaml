@@ -188,7 +188,7 @@ jobs:
           export ANDROIDNDK=\$NDK_HOME
 
           # make sure the platform really exists **inside the container**
-          yes | sdkmanager --sdk_root=$ANDROID_HOME "platforms\;android-33"
+          yes | sdkmanager --sdk_root=$ANDROID_HOME platforms\;android-33
           yes | sdkmanager --licenses   --sdk_root=$ANDROID_HOME
 
           # stitch in every sdkmanager/android path
