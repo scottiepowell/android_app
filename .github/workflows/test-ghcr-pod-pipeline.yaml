@@ -196,7 +196,7 @@ jobs:
     
           echo '--- DEBUG: sdkmanager should be discoverable ---'
           which sdkmanager && sdkmanager --version
-          ls -l \$ANDROID_HOME/tools/android \$ANDROID_HOME/tools/bin/sdkmanager
+          ls -l \$ANDROID_HOME/tools/android \$ANDROID_HOME/tools/bin/sdkmanager || true
           echo '--- END DEBUG ---'
     
           cd /app
