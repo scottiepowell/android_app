@@ -80,6 +80,12 @@ RUN for v in $(ls $ANDROID_HOME/build-tools); do \
        chmod +x $ANDROID_HOME/build-tools/$v/aidl; \
      done
 
+# ── NEW ── stub the legacy 'android' tool so p4a finds it ───────
+RUN mkdir -p $ANDROID_HOME/tools && \
+    printf '%s\n' '#!/usr/bin/env sh' 'exit 0' \
+      > $ANDROID_HOME/tools/android && \
+    chmod +x $ANDROID_HOME/tools/android
+
 # ── Stub out the old "android" tool so p4a’s prerequisites *see* it ──
 RUN for p in tools/bin/android bin/android; do \
        mkdir -p $(dirname $ANDROID_HOME/$p) && \
