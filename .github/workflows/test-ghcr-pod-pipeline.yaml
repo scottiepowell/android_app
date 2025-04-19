@@ -187,6 +187,10 @@ jobs:
           export ANDROID_SDK_ROOT=\$ANDROID_HOME
           export ANDROIDNDK=\$NDK_HOME
 
+          # make sure the platform really exists **inside the container**
+          yes | sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-33"
+          yes | sdkmanager --licenses   --sdk_root=$ANDROID_HOME
+
           # stitch in every sdkmanager/android path
           export PATH=\"\$ANDROID_HOME/tools/bin:\$ANDROID_HOME/cmdline-tools/tools/bin:\$ANDROID_HOME/bin:\$PATH\"
     
