@@ -188,9 +188,7 @@ jobs:
           export ANDROIDNDK=\$NDK_HOME
 
           # stitch in every sdkmanager/android path
-          export PATH=\$ANDROID_HOME/tools/bin:\
-          \$ANDROID_HOME/cmdline-tools/tools/bin:\
-          \$ANDROID_HOME/bin:\$PATH
+          export PATH=\"\$ANDROID_HOME/tools/bin:\$ANDROID_HOME/cmdline-tools/tools/bin:\$ANDROID_HOME/bin:\$PATH\"
     
           echo '--- DEBUG: sdkmanager should be discoverable ---'
           which sdkmanager && sdkmanager --version
