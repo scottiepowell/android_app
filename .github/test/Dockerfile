@@ -73,6 +73,13 @@ RUN mkdir -p $ANDROID_HOME/tools/bin \
  && ln -sf $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager \
        $ANDROID_HOME/tools/bin/sdkmanager
 
+# ── Stub out the old "android" tool as a no‑op so p4a detects it ──
+RUN printf '%s\n' \
+    '#!/usr/bin/env sh' \
+    'exit 0' \
+  > $ANDROID_HOME/tools/android \
+ && chmod +x $ANDROID_HOME/tools/android
+
 # ── Also expose sdkmanager at sdk-dir/bin/sdkmanager ─────
 RUN mkdir -p $ANDROID_HOME/bin \
  && ln -sf $ANDROID_HOME/tools/bin/sdkmanager \

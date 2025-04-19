@@ -179,21 +179,26 @@ jobs:
     - name: Build APK with p4a
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-        # inline export so nothing gets clobbered by login scripts:
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c "
           set -e
-          ANDROIDSDK=\$ANDROID_HOME
-          ANDROIDNDK=\$NDK_HOME
-          export PATH=\$ANDROIDSDK/tools/bin:\$ANDROIDSDK/cmdline-tools/tools/bin:\$ANDROIDSDK/bin:\$PATH
     
-          echo '--- DEBUG:'
+          # point p4a at our SDK/NDK
+          export ANDROID_HOME=\$ANDROID_HOME
+          export ANDROID_SDK_ROOT=\$ANDROID_HOME
+          export ANDROIDNDK=\$NDK_HOME
+    
+          # ensure any login/profile doesn't clobber our PATH
+          export PATH=\$ANDROID_HOME/tools/bin:\$ANDROID_HOME/cmdline-tools/tools/bin:\$ANDROID_HOME/bin:\$PATH
+    
+          echo '--- DEBUG: sdkmanager should be discoverable ---'
           which sdkmanager && sdkmanager --version
-          ls -l \$ANDROIDSDK/tools/bin/sdkmanager \$ANDROIDSDK/bin/sdkmanager
-          echo '--- END DEBUG'
+          ls -l \$ANDROID_HOME/tools/android \$ANDROID_HOME/tools/bin/sdkmanager
+          echo '--- END DEBUG ---'
     
           cd /app
+    
           p4a apk \
-            --sdk-dir=\$ANDROIDSDK \
+            --sdk-dir=\$ANDROID_HOME \
             --ndk-dir=\$ANDROIDNDK \
             --build-tools-version=33.0.2 \
             --dist-name=whats_in_the_box \
@@ -205,7 +210,7 @@ jobs:
             --name=\"What's in the Box\" \
             --version=0.0.1
         "
-
+        
     - name: Copy APK from Pod
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
