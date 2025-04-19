@@ -58,12 +58,14 @@ RUN mkdir -p $ANDROID_HOME/cmdline-tools \
 
 ENV PATH="$ANDROID_HOME/cmdline-tools/tools/bin:$PATH"
 
-# install exactly what we need
-RUN yes | sdkmanager \
+# ---- Android SDK packages we need ---------------------------------
+RUN yes | sdkmanager --install \
       "platform-tools" \
       "platforms;android-33" \
       "build-tools;33.0.2" \
-      "ndk;25.2.9519653"
+      "ndk;25.2.9519653"      \
+      --sdk_root=$ANDROID_HOME  && \
+    yes | sdkmanager --licenses --sdk_root=$ANDROID_HOME
 
 ENV NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
 ENV PATH="$NDK_HOME:$PATH"
