@@ -200,7 +200,11 @@ jobs:
           echo '--- END DEBUG ---'
     
           cd /app
-    
+
+          echo "--- p4a sees these targets ---"
+          sdkmanager --list | grep "platforms;android"
+          echo "--------------------------------"
+
           p4a apk \
             --sdk-dir=\$ANDROID_HOME \
             --ndk-dir=\$ANDROIDNDK \
