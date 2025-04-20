@@ -201,10 +201,14 @@ jobs:
     
           cd /app
 
+          echo '--- DEBUG: do we even have p4a? ---'
+          echo "PATH = $PATH"
+          which p4a || echo "😱 p4a not found!"
+          ls -l /usr/local/bin/p4a || true
+          echo '--- end p4a debug ---'
           echo "--- p4a sees these targets ---"
           sdkmanager --list | grep "platforms;android" || true
           echo "--------------------------------" && \
-
           p4a apk \
             --sdk-dir=\$ANDROID_HOME \
             --ndk-dir=\$ANDROIDNDK \
