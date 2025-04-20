@@ -207,7 +207,19 @@ jobs:
           echo "--- installed platforms ---"
           sdkmanager --list | grep "platforms;android" || true
           echo "--------------------------"
-    
+
+          echo "--- FOLDERS IN \$ANDROID_HOME (SDKROOT) ---"
+          find "$ANDROID_HOME" -maxdepth 2 -type d | sed "s|$ANDROID_HOME|SDKROOT|g"
+
+          echo "--- CONTENTS OF SDKROOT/platforms ---"
+          ls -l "$ANDROID_HOME/platforms" || true
+
+          echo "--- CONTENTS OF SDKROOT/platforms/android-33 ---"
+          ls -l "$ANDROID_HOME/platforms/android-33" || true
+
+          echo "--- SDKROOT/platforms/android-33/source.properties ---"
+          cat "$ANDROID_HOME/platforms/android-33/source.properties" || true
+
           cd /app
     
           p4a apk \
