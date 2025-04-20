@@ -28,9 +28,10 @@ ENV PIP_ROOT_USER_ACTION=ignore
 
 # ── python‑for‑android & deps ─────────────────────────────────
 RUN pip3 install --no-cache-dir \
-      python-for-android \
+      git+https://github.com/kivy/python-for-android.git@master#egg=python-for-android \
       cython \
       packaging
+
 
 ###########################
 # Apache ANT (needed by p4a)
