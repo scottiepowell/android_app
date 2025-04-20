@@ -179,39 +179,37 @@ jobs:
     - name: Build APK with p4a
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c "
+        # wrap the entire script in single‑quotes so you can freely use double‑quotes inside
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c '
           set -e
     
           # point p4a at our SDK/NDK
-          export ANDROID_HOME=\$ANDROID_HOME
-          export ANDROID_SDK_ROOT=\$ANDROID_HOME
-          export ANDROIDNDK=\$NDK_HOME
-
-          # make sure the platform really exists **inside the container**
-          yes | sdkmanager --sdk_root=$ANDROID_HOME platforms\;android-33
-          yes | sdkmanager --licenses   --sdk_root=$ANDROID_HOME
-
-          # stitch in every sdkmanager/android path
-          export PATH=\"\$ANDROID_HOME/tools/bin:\$ANDROID_HOME/cmdline-tools/tools/bin:\$ANDROID_HOME/bin:\$PATH\"
+          export ANDROID_HOME="$ANDROID_HOME"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROIDNDK="$NDK_HOME"
     
-          echo '--- DEBUG: sdkmanager should be discoverable ---'
+          # make sure sdkmanager is on the PATH
+          export PATH="$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/bin:$PATH"
+    
+          echo "--- DEBUG: sdkmanager version ---"
           which sdkmanager && sdkmanager --version
-          ls -l \$ANDROID_HOME/tools/android \$ANDROID_HOME/tools/bin/sdkmanager || true
-          echo '--- END DEBUG ---'
+    
+          echo "--- DEBUG: p4a on the PATH ---"
+          if ! which p4a >/dev/null; then
+            echo "😱 p4a not found in \$PATH!"
+            exit 1
+          fi
+          p4a --version
+    
+          echo "--- DEBUG: installed Android platforms ---"
+          sdkmanager --list | grep "platforms;android" || true
+          echo "--------------------------------"
     
           cd /app
-
-          echo '--- DEBUG: do we even have p4a? ---'
-          echo "PATH = $PATH"
-          which p4a || echo "😱 p4a not found!"
-          ls -l /usr/local/bin/p4a || true
-          echo '--- end p4a debug ---'
-          echo "--- p4a sees these targets ---"
-          sdkmanager --list | grep "platforms;android" || true
-          echo "--------------------------------" && \
+    
           p4a apk \
-            --sdk-dir=\$ANDROID_HOME \
-            --ndk-dir=\$ANDROIDNDK \
+            --sdk-dir="$ANDROID_HOME" \
+            --ndk-dir="$ANDROIDNDK" \
             --build-tools-version=33.0.2 \
             --dist-name=whats_in_the_box \
             --bootstrap=sdl2 \
@@ -219,9 +217,9 @@ jobs:
             --arch=arm64-v8a \
             --android-api=33 \
             --package=org.box.whats_in_the_box \
-            --name=\"What's in the Box\" \
+            --name="What'\''s in the Box" \
             --version=0.0.1
-        "
+        '        
         
     - name: Copy APK from Pod
       run: |
