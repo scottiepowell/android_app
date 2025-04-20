@@ -178,8 +178,8 @@ jobs:
     
     - name: Build APK with p4a
       run: |
-        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-        # wrap the entire script in single‑quotes so you can freely use double‑quotes inside
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" \
+              -o jsonpath='{.items[0].metadata.name}')
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c '
           set -e
     
@@ -188,22 +188,25 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
           export ANDROIDNDK="$NDK_HOME"
     
-          # make sure sdkmanager is on the PATH
-          export PATH="$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/bin:$PATH"
+          # *** RUNTIME STUBS for p4a ***
+          mkdir -p "$ANDROID_HOME/tools/bin"
+          ln -sf "$ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager" \
+                "$ANDROID_HOME/tools/bin/sdkmanager"
+          mkdir -p "$ANDROID_HOME/tools"
+          printf '\''#!/usr/bin/env sh\nexit 0'\'' \
+            > "$ANDROID_HOME/tools/android"
+          chmod +x "$ANDROID_HOME/tools/android"
     
-          echo "--- DEBUG: sdkmanager version ---"
+          # verify
+          echo "--- SDKROOT content ---"
+          ls -R "$ANDROID_HOME" | sed -e "s|$ANDROID_HOME|SDKROOT|g" | head -n 30
+    
+          echo "--- sdkmanager version ---"
           which sdkmanager && sdkmanager --version
     
-          echo "--- DEBUG: p4a on the PATH ---"
-          if ! which p4a >/dev/null; then
-            echo "😱 p4a not found in \$PATH!"
-            exit 1
-          fi
-          p4a --version
-    
-          echo "--- DEBUG: installed Android platforms ---"
+          echo "--- installed platforms ---"
           sdkmanager --list | grep "platforms;android" || true
-          echo "--------------------------------"
+          echo "--------------------------"
     
           cd /app
     
@@ -219,7 +222,8 @@ jobs:
             --package=org.box.whats_in_the_box \
             --name="What'\''s in the Box" \
             --version=0.0.1
-        '        
+        '
+                
         
     - name: Copy APK from Pod
       run: |
