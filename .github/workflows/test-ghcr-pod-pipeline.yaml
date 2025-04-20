@@ -203,7 +203,7 @@ jobs:
 
           echo "--- p4a sees these targets ---"
           sdkmanager --list | grep "platforms;android" || true
-          echo "--------------------------------"
+          echo "--------------------------------" && \
 
           p4a apk \
             --sdk-dir=\$ANDROID_HOME \
