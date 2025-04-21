@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/test-ghcr-pod-docker-pipeline.yaml"
       - ".github/test/**"
+env:
+  GH_ACTOR: ${{ github.actor }}
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
@@ -31,7 +33,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ env.GH_ACTOR }}
           password: ${{ secrets.GHCR_PAT }}
 
       - name: Build & push ARM64 image
