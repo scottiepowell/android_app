@@ -1,0 +1,199 @@
+name: Android ARM64 Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/docker/python-for-android/Dockerfile"
+      - ".github/workflows/arm64-p4a-image.yml"
+      - ".github/test/**"
+      - "buildozer.spec"
+
+env:
+  GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  build-p4a-arm64:
+    name: Build & Push python-for-android ARM64 Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout python-for-android dockerfile
+        uses: actions/checkout@v3
+        with:
+          path: docker/p4a
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Build & push ARM64 image
+        uses: docker/build-push-action@v4
+        with:
+          context: docker/p4a
+          file: docker/p4a/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.GHCR_IMAGE }}
+
+  # ──────────────────────────────────────────────────────────────────────
+
+  ephemeral-test:
+    needs: build-p4a-arm64
+    runs-on: ubuntu-latest
+    env:
+      EPHEMERAL_IMAGE: ${{ env.GHCR_IMAGE }}
+      # OCI + GHCR creds …
+      OCI_USER:          ${{ secrets.OCI_USER }}
+      OCI_FINGERPRINT:   ${{ secrets.OCI_FINGERPRINT }}
+      OCI_TENANCY:       ${{ secrets.OCI_TENANCY }}
+      OCI_REGION:        ${{ secrets.OCI_REGION }}
+      OCI_KEY_FILE:      /home/runner/.oci/oci_api_key.pem
+
+    steps:
+    # ────────────────────────────────────────────────────────────────
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Python Dependencies
+      run: pip install python-dotenv oci
+
+    # --- OCI CLI installation (unchanged) --------------------------
+    - name: Install OCI CLI
+      run: |
+        curl -Ls https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh |
+          bash -s -- --accept-all-defaults --install-dir /usr/local/bin
+    - name: Link OCI CLI to PATH
+      run: sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
+
+    # --- generate kube‑config (unchanged) --------------------------
+    - name: Setup OCI Config and Generate Kubeconfig
+      run: |
+        mkdir -p ~/.oci
+        echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
+        chmod 600 ~/.oci/oci_api_key.pem
+        python setup_oci_config.py
+
+        CLUSTER_ID=$(oci ce cluster list \
+                      --compartment-id "$OCI_TENANCY" \
+                      --query 'data[0].id' --raw-output)
+        echo "Found cluster: $CLUSTER_ID"
+
+        oci ce cluster create-kubeconfig \
+          --cluster-id "$CLUSTER_ID" \
+          --file /tmp/kubeconfig_test \
+          --region "$OCI_REGION"
+
+        echo "KUBECONFIG=/tmp/kubeconfig_test" >> "$GITHUB_ENV"
+
+    # --- create an ephemeral namespace -----------------------------
+    - name: Create Ephemeral Namespace
+      run: |
+        EPHEMERAL_NAMESPACE="build-ns-$(date +%s)"
+        echo "EPHEMERAL_NAMESPACE=$EPHEMERAL_NAMESPACE" >> "$GITHUB_ENV"
+        kubectl create ns "$EPHEMERAL_NAMESPACE"
+
+    # --- GHCR pull secret so the cluster can pull your image -------
+    - name: Create Private GHCR Pull Secret
+      run: |
+        kubectl create secret docker-registry ghcr-pull-secret \
+          --docker-server=ghcr.io \
+          --docker-username="${{ github.actor }}" \
+          --docker-password='${{ secrets.GH_PIPELINE }}' \
+          --docker-email=noreply@github.com \
+          --namespace "$EPHEMERAL_NAMESPACE"
+
+        kubectl patch sa default \
+          -n "$EPHEMERAL_NAMESPACE" \
+          -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
+
+    # --- deploy the (arm64) build container ------------------------
+    - name: Deploy Test Pod Using ARM64 p4a image
+      run: |
+        sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" .github/test/ghcr-test-pod.yaml \
+          > /tmp/ghcr-test-pod.yaml
+        kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
+    
+    # --- wait for container(s) to be ready -------------------------
+    - name: Wait for Test Pod to be Ready
+      id: wait_pod
+      run: |
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+        echo "POD_NAME=$POD" >> "$GITHUB_ENV"
+
+        set +e
+        kubectl wait \
+          --for=condition=ContainersReady \
+          --timeout=300s pod/"$POD" -n "$EPHEMERAL_NAMESPACE"
+        READY=$?
+        set -e
+
+        if [ "$READY" -ne 0 ]; then
+          echo "::warning::Pod did not reach ContainersReady – dumping logs"
+          kubectl logs "$POD" -n "$EPHEMERAL_NAMESPACE" || true
+          kubectl describe pod "$POD" -n "$EPHEMERAL_NAMESPACE" || true
+          exit 1
+        fi
+
+    # --- copy your repo into /app inside the container -------------
+    - name: Copy Source Code to Pod
+      run: |
+          tar -czf /tmp/src.tar.gz .
+          kubectl cp /tmp/src.tar.gz "$EPHEMERAL_NAMESPACE/$POD_NAME:/tmp/src.tar.gz"
+          kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
+          bash -c 'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
+    
+    - name: Build APK with p4a in Pod
+      run: |
+          POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -lc '
+            set -e
+            export ANDROID_HOME=$ANDROID_HOME
+            export ANDROID_SDK_ROOT=$ANDROID_HOME
+            export ANDROIDNDK=$NDK_HOME
+            export PATH=$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/bin:$PATH
+            cd /app
+            p4a apk \
+              --sdk-dir="$ANDROID_HOME" \
+              --ndk-dir="$ANDROIDNDK" \
+              --build-tools-version=33.0.2 \
+              --dist-name=whats_in_the_box \
+              --bootstrap=sdl2 \
+              --requirements=kivy,sqlalchemy,click,sqlite3 \
+              --arch=arm64-v8a \
+              --android-api=33 \
+              --package=org.box.whats_in_the_box \
+              --name="What'\''s in the Box" \
+              --version=0.0.1
+          '
+    - name: Copy APK from Pod
+      run: |
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
+        kubectl cp "${EPHEMERAL_NAMESPACE}/${POD}:/root/.local/share/python-for-android/dists/whats_in_the_box/outputs/apk" /tmp/apks
+        ls -l /tmp/apks
+
+    - name: Upload APK as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Built-APK
+        path: /tmp/apk_bin
+
+    # --- clean up --------------------------------------------------
+    - name: Cleanup Ephemeral Namespace
+      if: always()
+      run: |
+        kubectl delete ns "$EPHEMERAL_NAMESPACE" --wait
