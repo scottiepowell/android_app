@@ -171,28 +171,37 @@ jobs:
             # --------------------------- 1. Install deps ----------------------------
             pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
             apt-get update && apt-get install -y --no-install-recommends curl unzip
+            
             # --------------------------- 2. Android SDK ----------------------------
             export ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
-            export CLI_TOOLS_ZIP=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            CLI_TOOLS_ZIP=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
 
-            # 2a) install cmdline-tools if sdkmanager is missing
+            # 2a) install cmdline‑tools if sdkmanager is still missing
             if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
-            mkdir -p "$ANDROID_HOME/cmdline-tools"
-            curl -sSL "$CLI_TOOLS_ZIP" -o /tmp/cli.zip
-            unzip -q /tmp/cli.zip -d "$ANDROID_HOME/cmdline-tools/latest"
+              mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
+              curl -sSL "$CLI_TOOLS_ZIP" -o /tmp/cli.zip
+              unzip -q /tmp/cli.zip -d "$ANDROID_HOME/cmdline-tools/latest"
+
+              # ── fix the extra level created by Google’s ZIP ──────────────────
+              if [ -d  "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools" ]; then
+                mv "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools"/* \
+                  "$ANDROID_HOME/cmdline-tools/latest/"
+                rmdir "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools"
+              fi
             fi
 
-            # 2b) add modern SDK locations to PATH
-            export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+            # 2b) make sure sdkmanager is on the PATH
+            export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
+            # 2c) accept licences & install what we need
             yes | sdkmanager --licenses
-            sdkmanager \
-            "platform-tools" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" \
-            "ndk;25.2.9519653"
+            sdkmanager                                  \
+              "platform-tools"                           \
+              "platforms;android-33"                    \
+              "build-tools;33.0.2"                      \
+              "ndk;25.2.9519653"
 
-            export NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
+            export NDK_HOME="$ANDROID_HOME/ndk/25.2.9519653"
 
             # --------------------------- 3. Diagnostics ----------------------------
             echo "=== DEBUG: final env ==="
