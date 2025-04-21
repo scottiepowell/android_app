@@ -164,48 +164,60 @@ jobs:
           bash -c 'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
     
     - name: Build APK with p4a in Pod
-      run: |
-          POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
-          kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -lc '
-            set -euxo pipefail
-        
-          pip3 install --no-cache-dir \
-            "python-for-android==2024.01.21" \
-            cython packaging
+        run: |
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
 
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
+            # --------------------------- 1. Python deps ----------------------------
+            pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
+
+            # --------------------------- 2. Android SDK ----------------------------
             export ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
-            export NDK_HOME=${NDK_HOME:-/opt/android-ndk}
-            export PATH=$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/bin:$PATH
-            
-            echo "=== DEBUG: environment and p4a install ==="
+            export CLI_TOOLS_ZIP=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+
+            # 2a) install cmdline-tools if sdkmanager is missing
+            if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            curl -sSL "$CLI_TOOLS_ZIP" -o /tmp/cli.zip
+            unzip -q /tmp/cli.zip -d "$ANDROID_HOME/cmdline-tools/latest"
+            fi
+
+            # 2b) add modern SDK locations to PATH
+            export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+            yes | sdkmanager --licenses
+            sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2" \
+            "ndk;25.2.9519653"
+
+            export NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653
+
+            # --------------------------- 3. Diagnostics ----------------------------
+            echo "=== DEBUG: final env ==="
             echo "ANDROID_HOME=$ANDROID_HOME"
             echo "NDK_HOME=$NDK_HOME"
-            echo "PATH=$PATH"
-            echo "--- which python ---"
-            which python3
-            echo "--- pip3 list python‑for‑android entry ---"
-            pip3 list | grep python-for-android || echo "(python-for-android not installed)"
-            echo "--- which p4a ---"
-            which p4a || echo "(no p4a on path)"
-            echo "--- ls /usr/local/bin/p4a ---"
-            ls -l /usr/local/bin/p4a || true
-            echo "=== end debug ==="
-            
-            cd /app
+            which p4a
+            p4a --version
+            echo "========================"
 
+            # --------------------------- 4. Build APK ------------------------------
+            cd /app
             p4a apk \
-              --sdk-dir="$ANDROID_HOME" \
-              --ndk-dir="$NDK_HOME" \
-              --build-tools-version=33.0.2 \
-              --dist-name=whats_in_the_box \
-              --bootstrap=sdl2 \
-              --requirements=kivy,sqlalchemy,click,sqlite3 \
-              --arch=arm64-v8a \
-              --android-api=33 \
-              --package=org.box.whats_in_the_box \
-              --name="What'\''s in the Box" \
-              --version=0.0.1
-          '
+            --sdk-dir="$ANDROID_HOME" \
+            --ndk-dir="$NDK_HOME" \
+            --build-tools-version=33.0.2 \
+            --dist-name=whats_in_the_box \
+            --bootstrap=sdl2 \
+            --requirements=kivy,sqlalchemy,click,sqlite3 \
+            --arch=arm64-v8a \
+            --android-api=33 \
+            --package=org.box.whats_in_the_box \
+            --name="What'"'"'s in the Box" \
+            --version=0.0.1
+        '
+        
     - name: Copy APK from Pod
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
