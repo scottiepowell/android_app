@@ -170,7 +170,7 @@ jobs:
             set -euxo pipefail
         
           pip3 install --no-cache-dir \
-            "python-for-android==2024.03.11" \
+            "python-for-android==2024.01.21" \
             cython packaging
 
             export ANDROID_HOME=$ANDROID_HOME
@@ -191,7 +191,7 @@ jobs:
             echo "=== end debug ==="
             
             cd /app
-            
+
             p4a apk \
               --sdk-dir="$ANDROID_HOME" \
               --ndk-dir="$ANDROIDNDK" \
