@@ -170,8 +170,11 @@ jobs:
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
             # --------------------------- 1. Install deps ----------------------------
             pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
-            apt-get update && apt-get install -y --no-install-recommends curl unzip
+            apt-get update && apt-get install -y --no-install-recommends openjdk-17-jdk-headless curl unzip 
             
+            # point at java 17
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+            export PATH=$JAVA_HOME/bin:$PATH
             # --------------------------- 2. Android SDK ----------------------------
             export ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
             CLI_TOOLS_ZIP=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
