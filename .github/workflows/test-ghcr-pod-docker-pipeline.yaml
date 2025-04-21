@@ -167,7 +167,12 @@ jobs:
       run: |
           POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
           kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -lc '
-            set -e
+            set -euxo pipefail
+        
+          pip3 install --no-cache-dir \
+            "python-for-android==2024.03.11" \
+            cython packaging
+
             export ANDROID_HOME=$ANDROID_HOME
             export ANDROID_SDK_ROOT=$ANDROID_HOME
             export ANDROIDNDK=$NDK_HOME
@@ -186,6 +191,7 @@ jobs:
             echo "=== end debug ==="
             
             cd /app
+            
             p4a apk \
               --sdk-dir="$ANDROID_HOME" \
               --ndk-dir="$ANDROIDNDK" \
