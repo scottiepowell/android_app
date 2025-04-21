@@ -195,7 +195,7 @@ jobs:
 
             p4a apk \
               --sdk-dir="$ANDROID_HOME" \
-              --ndk-dir="$ANDROIDNDK" \
+              --ndk-dir="$NDK_HOME" \
               --build-tools-version=33.0.2 \
               --dist-name=whats_in_the_box \
               --bootstrap=sdl2 \
