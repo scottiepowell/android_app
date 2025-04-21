@@ -142,7 +142,7 @@ jobs:
     # --- deploy the (arm64) build container ------------------------
     - name: Deploy Test Pod Using Kivy’s p4a image
       run: |
-        IMAGE=ghcr.io/kivy/python-for-android:latest
+        IMAGE=kivy/python-for-android:latest
         sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" .github/test/ghcr-test-pod.yaml \
           > /tmp/ghcr-test-pod.yaml
         kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
