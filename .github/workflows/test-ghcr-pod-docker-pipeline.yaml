@@ -197,7 +197,7 @@ jobs:
             export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
             # 2c) accept licences & install what we need
-            yes | sdkmanager --licenses
+            yes | sdkmanager --licenses || true
             sdkmanager                                  \
               "platform-tools"                           \
               "platforms;android-33"                    \
