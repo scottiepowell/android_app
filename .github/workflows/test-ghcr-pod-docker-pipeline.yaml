@@ -168,9 +168,9 @@ jobs:
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
 
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
-            # --------------------------- 1. Python deps ----------------------------
+            # --------------------------- 1. Install deps ----------------------------
             pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
-
+            apt-get update && apt-get install -y --no-install-recommends curl unzip
             # --------------------------- 2. Android SDK ----------------------------
             export ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
             export CLI_TOOLS_ZIP=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
