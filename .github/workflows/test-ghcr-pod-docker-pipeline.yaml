@@ -172,6 +172,19 @@ jobs:
             export ANDROID_SDK_ROOT=$ANDROID_HOME
             export ANDROIDNDK=$NDK_HOME
             export PATH=$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/bin:$PATH
+            
+            echo "=== DEBUG: environment and p4a install ==="
+            echo "PATH=$PATH"
+            echo "--- which python ---"
+            which python3
+            echo "--- pip3 list python‑for‑android entry ---"
+            pip3 list | grep python-for-android || echo "(python-for-android not installed)"
+            echo "--- which p4a ---"
+            which p4a || echo "(no p4a on path)"
+            echo "--- ls /usr/local/bin/p4a ---"
+            ls -l /usr/local/bin/p4a || true
+            echo "=== end debug ==="
+            
             cd /app
             p4a apk \
               --sdk-dir="$ANDROID_HOME" \
