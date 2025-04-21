@@ -4,10 +4,8 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - ".github/docker/python-for-android/Dockerfile"
-      - ".github/workflows/arm64-p4a-image.yml"
+      - ".github/workflows/test-ghcr-pod-docker-pipeline.yaml"
       - ".github/test/**"
-      - "buildozer.spec"
 
 env:
   GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
