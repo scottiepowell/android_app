@@ -6,8 +6,6 @@ on:
     paths:
       - ".github/workflows/test-ghcr-pod-docker-pipeline.yaml"
       - ".github/test/**"
-env:
-  GH_ACTOR: ${{ github.actor }}
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
