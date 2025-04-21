@@ -15,6 +15,7 @@ jobs:
     name: Build & Push python-for-android ARM64 Image
     runs-on: ubuntu-latest
     env:
+      GH_ACTOR:    ${{ github.actor }}
       GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
 
     steps:
