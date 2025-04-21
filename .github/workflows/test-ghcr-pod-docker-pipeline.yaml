@@ -174,11 +174,12 @@ jobs:
             cython packaging
 
             export ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
-            export ANDROIDNDK=${NDK_HOME:-/opt/android-ndk}
-            export ANDROIDNDK=$NDK_HOME
+            export NDK_HOME=${NDK_HOME:-/opt/android-ndk}
             export PATH=$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/tools/bin:$ANDROID_HOME/bin:$PATH
             
             echo "=== DEBUG: environment and p4a install ==="
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            echo "NDK_HOME=$NDK_HOME"
             echo "PATH=$PATH"
             echo "--- which python ---"
             which python3
