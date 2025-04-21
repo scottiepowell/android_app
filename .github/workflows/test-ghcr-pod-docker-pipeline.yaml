@@ -7,14 +7,14 @@ on:
       - ".github/workflows/test-ghcr-pod-docker-pipeline.yaml"
       - ".github/test/**"
 
-env:
-  GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
-
 jobs:
   # ──────────────────────────────────────────────────────────────────────
   build-p4a-arm64:
     name: Build & Push python-for-android ARM64 Image
     runs-on: ubuntu-latest
+    env:
+      GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
+
     steps:
       - name: Checkout python-for-android dockerfile
         uses: actions/checkout@v3
@@ -43,13 +43,16 @@ jobs:
           push: true
           tags: ${{ env.GHCR_IMAGE }}
 
+      - name: Export image name
+        run: echo "image=${{ env.GHCR_IMAGE }}" >> $GITHUB_OUTPUT
+
   # ──────────────────────────────────────────────────────────────────────
 
   ephemeral-test:
     needs: build-p4a-arm64
     runs-on: ubuntu-latest
     env:
-      EPHEMERAL_IMAGE: ${{ env.GHCR_IMAGE }}
+      EPHEMERAL_IMAGE: ${{ needs.build-p4a-arm64.outputs.image }}
       # OCI + GHCR creds …
       OCI_USER:          ${{ secrets.OCI_USER }}
       OCI_FINGERPRINT:   ${{ secrets.OCI_FINGERPRINT }}
@@ -122,7 +125,8 @@ jobs:
     # --- deploy the (arm64) build container ------------------------
     - name: Deploy Test Pod Using ARM64 p4a image
       run: |
-        sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" .github/test/ghcr-test-pod.yaml \
+        sed "s|IMAGE_PLACEHOLDER|${{ env.EPHEMERAL_IMAGE }}|g" \
+          .github/test/ghcr-test-pod.yaml \
           > /tmp/ghcr-test-pod.yaml
         kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
     
