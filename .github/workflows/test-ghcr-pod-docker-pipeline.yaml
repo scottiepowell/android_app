@@ -171,7 +171,8 @@ jobs:
             # --------------------------- 1. Install deps ----------------------------
             pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
             apt-get update && apt-get install -y --no-install-recommends \
-            openjdk-17-jdk-headless curl unzip autoconf automake libtool pkg-config make gcc g++
+            openjdk-17-jdk-headless curl unzip autoconf automake libtool pkg-config make gcc g++ \
+            autoconf automake libtool m4 pkg-config build-essential
             
             # point at java 17
             export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
