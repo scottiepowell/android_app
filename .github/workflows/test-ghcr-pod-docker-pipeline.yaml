@@ -170,7 +170,8 @@ jobs:
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
             # --------------------------- 1. Install deps ----------------------------
             pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
-            apt-get update && apt-get install -y --no-install-recommends openjdk-17-jdk-headless curl unzip 
+            apt-get update && apt-get install -y --no-install-recommends \
+            openjdk-17-jdk-headless curl unzip autoconf automake libtool pkg-config make gcc g++
             
             # point at java 17
             export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
