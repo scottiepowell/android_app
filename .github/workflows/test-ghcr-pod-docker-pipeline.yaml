@@ -1,24 +1,30 @@
-name: OCI & Ephemeral Pod Test Pipeline
+name: Android ARM64 Build
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - ".github/workflows/test-ghcr-pod-pipeline.yaml"
+      - ".github/workflows/test-ghcr-pod-docker-pipeline.yaml"
       - ".github/test/**"
-      - "buildozer.spec"
-
-env:
-  GH_ACTOR: ${{ github.actor }}
-  IMAGE_NAME: "arm64"
-  IMAGE_TAG: "v27"
 
 jobs:
-  build-image:
+  # ──────────────────────────────────────────────────────────────────────
+  build-p4a-arm64:
+    if: false
+    name: Build & Push python-for-android ARM64 Image
     runs-on: ubuntu-latest
+    env:
+      GH_ACTOR:    ${{ github.actor }}
+      GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
+  
+    outputs:
+        image: ${{ env.GHCR_IMAGE }}
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout python-for-android dockerfile
         uses: actions/checkout@v3
+        with:
+          path: docker/p4a
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -26,7 +32,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Log in to GHCR so we can push the image
       - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
@@ -34,41 +39,25 @@ jobs:
           username: ${{ env.GH_ACTOR }}
           password: ${{ secrets.GH_PIPELINE }}
 
-      # Check if the image already exists in GHCR (skip build if so)
-      - name: Check if Custom Image Exists in GHCR
-        id: check_image
-        run: |
-          set -e
-          IMAGE="ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
-          echo "Checking if image exists: $IMAGE"
-
-          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Image already exists in GHCR."
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Image does not exist in GHCR."
-          fi
-
-      # Build and push to GHCR if it doesn't exist yet
-      - name: Build and Push Docker Image
-        if: steps.check_image.outputs.exists == 'false'
+      - name: Build & push ARM64 image
         uses: docker/build-push-action@v4
         with:
-          context: ./.github/test
-          file: ./.github/test/Dockerfile
+          context: docker/p4a
+          file: docker/p4a/Dockerfile
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.GHCR_IMAGE }}
 
-      - name: Skip Build as Image Already Exists
-        if: steps.check_image.outputs.exists == 'true'
-        run: echo "Image already exists, skipping build."
+      - name: Export image name
+        run: echo "image=${{ env.GHCR_IMAGE }}" >> $GITHUB_OUTPUT
+
+  # ──────────────────────────────────────────────────────────────────────
 
   ephemeral-test:
+    needs: build-p4a-arm64
     runs-on: ubuntu-latest
-
     env:
+      EPHEMERAL_IMAGE: ghcr.io/scottiepowell/android_app/python-for-android:latest
       # OCI + GHCR creds …
       OCI_USER:          ${{ secrets.OCI_USER }}
       OCI_FINGERPRINT:   ${{ secrets.OCI_FINGERPRINT }}
@@ -138,11 +127,16 @@ jobs:
           -n "$EPHEMERAL_NAMESPACE" \
           -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
 
-    # --- deploy the (arm64) build container ------------------------
-    - name: Deploy Test Pod Using Kivy’s p4a image
+    # --- register QEMU emulation on your ARM nodes -------------
+    - name: Register QEMU emulation on cluster
       run: |
-        IMAGE=kivy/python-for-android:latest
-        sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" .github/test/ghcr-test-pod.yaml \
+        kubectl apply -f https://raw.githubusercontent.com/multiarch/qemu-user-static/master/deployment/qemu-user-static-daemonset.yml
+
+    # --- deploy the (arm64) build container ------------------------
+    - name: Deploy Test Pod Using ARM64 p4a image
+      run: |
+        sed "s|IMAGE_PLACEHOLDER|${{ env.EPHEMERAL_IMAGE }}|g" \
+          .github/test/ghcr-test-pod.yaml \
           > /tmp/ghcr-test-pod.yaml
         kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
     
@@ -170,60 +164,69 @@ jobs:
     # --- copy your repo into /app inside the container -------------
     - name: Copy Source Code to Pod
       run: |
-        tar -czf /tmp/src.tar.gz .
-        kubectl cp /tmp/src.tar.gz "$EPHEMERAL_NAMESPACE/$POD_NAME:/tmp/src.tar.gz"
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
+          tar -czf /tmp/src.tar.gz .
+          kubectl cp /tmp/src.tar.gz "$EPHEMERAL_NAMESPACE/$POD_NAME:/tmp/src.tar.gz"
+          kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD_NAME" -- \
           bash -c 'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
     
-    - name: Build APK with p4a
+    - name: Build APK with p4a in Pod
       run: |
-        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" \
-              -o jsonpath='{.items[0].metadata.name}')
-        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -c '
-          set -e
-    
-          # point p4a at our SDK/NDK
-          export ANDROID_HOME="$ANDROID_HOME"
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
-          export ANDROIDNDK="$NDK_HOME"
-    
-          # *** RUNTIME STUBS for p4a ***
-          mkdir -p "$ANDROID_HOME/tools/bin"
-          ln -sf "$ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager" \
-                "$ANDROID_HOME/tools/bin/sdkmanager"
-          mkdir -p "$ANDROID_HOME/tools"
-          printf '\''#!/usr/bin/env sh\nexit 0'\'' \
-            > "$ANDROID_HOME/tools/android"
-          chmod +x "$ANDROID_HOME/tools/android"
-    
-          # verify
-          echo "--- SDKROOT content ---"
-          ls -R "$ANDROID_HOME" | sed -e "s|$ANDROID_HOME|SDKROOT|g" | head -n 30
-    
-          echo "--- sdkmanager version ---"
-          which sdkmanager && sdkmanager --version
-    
-          echo "--- installed platforms ---"
-          sdkmanager --list | grep "platforms;android" || true
-          echo "--------------------------"
+        POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
 
-          echo "--- FOLDERS IN \$ANDROID_HOME (SDKROOT) ---"
-          find "$ANDROID_HOME" -maxdepth 2 -type d | sed "s|$ANDROID_HOME|SDKROOT|g"
+        kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
+            # --------------------------- 1. Install deps ----------------------------
+            pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
+            apt-get update && apt-get install -y --no-install-recommends \
+            openjdk-17-jdk-headless curl unzip autoconf automake libtool pkg-config make gcc g++ \
+            autoconf automake libtool m4 pkg-config build-essential libltdl-dev
+            
+            # point at java 17
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+            export PATH=$JAVA_HOME/bin:$PATH
+            # --------------------------- 2. Android SDK ----------------------------
+            export ANDROID_HOME=${ANDROID_HOME:-/opt/android-sdk}
+            CLI_TOOLS_ZIP=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
 
-          echo "--- CONTENTS OF SDKROOT/platforms ---"
-          ls -l "$ANDROID_HOME/platforms" || true
+            # 2a) install cmdline‑tools if sdkmanager is still missing
+            if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+              mkdir -p "$ANDROID_HOME/cmdline-tools/latest"
+              curl -sSL "$CLI_TOOLS_ZIP" -o /tmp/cli.zip
+              unzip -q /tmp/cli.zip -d "$ANDROID_HOME/cmdline-tools/latest"
 
-          echo "--- CONTENTS OF SDKROOT/platforms/android-33 ---"
-          ls -l "$ANDROID_HOME/platforms/android-33" || true
+              # ── fix the extra level created by Google’s ZIP ──────────────────
+              if [ -d  "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools" ]; then
+                mv "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools"/* \
+                  "$ANDROID_HOME/cmdline-tools/latest/"
+                rmdir "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools"
+              fi
+            fi
 
-          echo "--- SDKROOT/platforms/android-33/source.properties ---"
-          cat "$ANDROID_HOME/platforms/android-33/source.properties" || true
+            # 2b) make sure sdkmanager is on the PATH
+            export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 
-          cd /app
-    
-          p4a apk \
+            # 2c) accept licences & install what we need
+            yes | sdkmanager --licenses || true
+            sdkmanager                                  \
+              "platform-tools"                           \
+              "platforms;android-33"                    \
+              "build-tools;33.0.2"                      \
+              "ndk;25.2.9519653"
+
+            export NDK_HOME="$ANDROID_HOME/ndk/25.2.9519653"
+
+            # --------------------------- 3. Diagnostics ----------------------------
+            echo "=== DEBUG: final env ==="
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            echo "NDK_HOME=$NDK_HOME"
+            which p4a
+            p4a --version
+            echo "========================"
+
+            # --------------------------- 4. Build APK ------------------------------
+            cd /app
+            p4a apk \
             --sdk-dir="$ANDROID_HOME" \
-            --ndk-dir="$ANDROIDNDK" \
+            --ndk-dir="$NDK_HOME" \
             --build-tools-version=33.0.2 \
             --dist-name=whats_in_the_box \
             --bootstrap=sdl2 \
@@ -231,10 +234,9 @@ jobs:
             --arch=arm64-v8a \
             --android-api=33 \
             --package=org.box.whats_in_the_box \
-            --name="What'\''s in the Box" \
+            --name="What'"'"'s in the Box" \
             --version=0.0.1
         '
-                
         
     - name: Copy APK from Pod
       run: |
