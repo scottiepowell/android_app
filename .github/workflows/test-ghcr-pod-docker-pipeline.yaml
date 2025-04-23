@@ -10,6 +10,7 @@ on:
 jobs:
   # ──────────────────────────────────────────────────────────────────────
   build-p4a-arm64:
+    if: false
     name: Build & Push python-for-android ARM64 Image
     runs-on: ubuntu-latest
     env:
@@ -56,7 +57,7 @@ jobs:
     needs: build-p4a-arm64
     runs-on: ubuntu-latest
     env:
-      EPHEMERAL_IMAGE: ${{ needs.build-p4a-arm64.outputs.image }}
+      EPHEMERAL_IMAGE: ghcr.io/scottiepowell/android_app/python-for-android:latest
       # OCI + GHCR creds …
       OCI_USER:          ${{ secrets.OCI_USER }}
       OCI_FINGERPRINT:   ${{ secrets.OCI_FINGERPRINT }}
@@ -125,6 +126,11 @@ jobs:
         kubectl patch sa default \
           -n "$EPHEMERAL_NAMESPACE" \
           -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
+
+    # --- register QEMU emulation on your ARM nodes -------------
+    - name: Register QEMU emulation on cluster
+      run: |
+        kubectl apply -f https://raw.githubusercontent.com/multiarch/qemu-user-static/master/deployment/qemu-user-static-daemonset.yml
 
     # --- deploy the (arm64) build container ------------------------
     - name: Deploy Test Pod Using ARM64 p4a image
