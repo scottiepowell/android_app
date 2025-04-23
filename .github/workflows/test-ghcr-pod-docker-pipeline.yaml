@@ -54,7 +54,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
 
   ephemeral-test:
-    needs: build-p4a-arm64
+    #needs: build-p4a-arm64
     runs-on: ubuntu-latest
     env:
       EPHEMERAL_IMAGE: ghcr.io/scottiepowell/android_app/python-for-android:latest
