@@ -49,7 +49,7 @@ jobs:
   ephemeral-test:
     runs-on: ubuntu-latest
     env:
-      EPHEMERAL_IMAGE: ghcr.io/scottiepowell/android_app/python-for-android:latest
+      EPHEMERAL_IMAGE: ghcr.io/scottiepowell/android_app/python-for-android:arm64
       OCI_USER:        ${{ secrets.OCI_USER }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
       OCI_TENANCY:     ${{ secrets.OCI_TENANCY }}
