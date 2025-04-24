@@ -86,7 +86,7 @@ jobs:
     - name: Link OCI CLI to PATH
       run: sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
 
-    # --- generate kube‑config (unchanged) --------------------------
+    # --- generate kube‑config --------------------------
     - name: Setup OCI Config and Generate Kubeconfig
       run: |
         mkdir -p ~/.oci
@@ -150,9 +150,33 @@ jobs:
         EOF
 
     - name: Wait for binfmt registration to finish
+      id: wait_qemu
       run: |
+        set +e
         kubectl wait -n "$EPHEMERAL_NAMESPACE" --for=condition=complete job/qemu-binfmt-register \
           --timeout=120s
+        RET=$?
+        set -e
+        if [ $RET -ne 0 ]; then
+          echo "::warning::qemu-binfmt-register job did not complete in time, dumping diagnostics…"
+          
+          echo "===== Job Description ====="
+          kubectl describe job qemu-binfmt-register -n "$EPHEMERAL_NAMESPACE" || true
+
+          echo "===== Pods for that Job ====="
+          kubectl get pods -n "$EPHEMERAL_NAMESPACE" -l job-name=qemu-binfmt-register || true
+
+          POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -l job-name=qemu-binfmt-register \
+                -o jsonpath='{.items[0].metadata.name}') || POD=""
+          if [ -n "$POD" ]; then
+            echo "===== Logs from init container 'register' in Pod $POD ====="
+            kubectl logs -n "$EPHEMERAL_NAMESPACE" "$POD" -c register || true
+            echo "===== Full Pod YAML ====="
+            kubectl get pod "$POD" -n "$EPHEMERAL_NAMESPACE" -o yaml || true
+          fi
+
+          exit 1
+        fi
 
     # clean up so your namespace isn’t cluttered:
     - name: Delete QEMU registration job
