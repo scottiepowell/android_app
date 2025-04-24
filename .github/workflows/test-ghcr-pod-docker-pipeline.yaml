@@ -130,7 +130,43 @@ jobs:
     # --- register QEMU emulation on your ARM nodes -------------
     - name: Register QEMU emulation on cluster
       run: |
-        kubectl apply -f https://raw.githubusercontent.com/multiarch/qemu-user-static/v7.2.0-1/deployment/qemu-user-static-daemonset.yml
+        # apply the QEMU binfmt_misc registration as a DaemonSet
+        cat <<EOF | kubectl apply -n "$EPHEMERAL_NAMESPACE" -f -
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: qemu-user-static
+          namespace: $EPHEMERAL_NAMESPACE
+          labels:
+            app: qemu-user-static
+        spec:
+          selector:
+            matchLabels:
+              app: qemu-user-static
+          template:
+            metadata:
+              labels:
+                app: qemu-user-static
+            spec:
+              initContainers:
+                - name: qemu-user-static
+                  image: multiarch/qemu-user-static:latest
+                  args: ["--reset","-p","yes"]
+                  securityContext:
+                    privileged: true
+              # a tiny “pause” container so the DaemonSet pod stays alive
+              containers:
+                - name: pause
+                  image: k8s.gcr.io/pause:3.5
+                  resources:
+                    requests:
+                      cpu: 50m
+                      memory: 50Mi
+                    limits:
+                      cpu: 50m
+                      memory: 50Mi
+        EOF
+
 
     # --- deploy the (arm64) build container ------------------------
     - name: Deploy Test Pod Using ARM64 p4a image
