@@ -204,7 +204,7 @@ jobs:
 
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
             # --------------------------- 1. Install deps ----------------------------
-            pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
+            pip3 install --no-cache-dir python-for-android==2024.04.08 cython packaging
             apt-get update && apt-get install -y --no-install-recommends \
             openjdk-17-jdk-headless curl unzip autoconf automake libtool pkg-config make gcc g++ \
             autoconf automake libtool m4 pkg-config build-essential libltdl-dev
@@ -237,11 +237,11 @@ jobs:
             yes | sdkmanager --licenses || true
             sdkmanager                                  \
               "platform-tools"                           \
-              "platforms;android-33"                    \
-              "build-tools;33.0.2"                      \
-              "ndk;25.2.9519653"
+              "platforms;android-34"                    \
+              "build-tools;34.0.0"                      \
+              "ndk;26.1.10909125"
 
-            export NDK_HOME="$ANDROID_HOME/ndk/25.2.9519653"
+            export NDK_HOME="$ANDROID_HOME/ndk/26.1.10909125"
 
             # --------------------------- 3. Diagnostics ----------------------------
             echo "=== DEBUG: final env ==="
@@ -256,12 +256,12 @@ jobs:
             p4a apk \
             --sdk-dir="$ANDROID_HOME" \
             --ndk-dir="$NDK_HOME" \
-            --build-tools-version=33.0.2 \
+            --build-tools-version=34.0.0 \
             --dist-name=whats_in_the_box \
             --bootstrap=sdl2 \
             --requirements=kivy,sqlalchemy,click,sqlite3 \
             --arch=arm64-v8a \
-            --android-api=33 \
+            --android-api=34 \
             --package=org.box.whats_in_the_box \
             --name="What'"'"'s in the Box" \
             --version=0.0.1
