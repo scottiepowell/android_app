@@ -127,46 +127,37 @@ jobs:
           -n "$EPHEMERAL_NAMESPACE" \
           -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
 
-    # --- register QEMU emulation on your ARM nodes -------------
-    - name: Register QEMU emulation on cluster
+    # apply this in your ephemeral-test job to register all QEMU binfmt handlers via kernel's binfmt_misc mechanism:
+    - name: Register QEMU binfmt_misc on every node
       run: |
-        # apply the QEMU binfmt_misc registration as a DaemonSet
         cat <<EOF | kubectl apply -n "$EPHEMERAL_NAMESPACE" -f -
-        apiVersion: apps/v1
-        kind: DaemonSet
+        apiVersion: batch/v1
+        kind: Job
         metadata:
-          name: qemu-user-static
-          namespace: $EPHEMERAL_NAMESPACE
-          labels:
-            app: qemu-user-static
+          name: qemu-binfmt-register
         spec:
-          selector:
-            matchLabels:
-              app: qemu-user-static
+          backoffLimit: 0
           template:
-            metadata:
-              labels:
-                app: qemu-user-static
             spec:
-              initContainers:
-                - name: qemu-user-static
-                  image: multiarch/qemu-user-static:latest
-                  args: ["--reset","-p","yes"]
+              hostPID: true
+              restartPolicy: Never
+              containers:
+                - name: register
+                  image: multiarch/qemu-user-static:register
+                  args: ["--reset", "-p", "yes"]
                   securityContext:
                     privileged: true
-              # a tiny “pause” container so the DaemonSet pod stays alive
-              containers:
-                - name: pause
-                  image: k8s.gcr.io/pause:3.5
-                  resources:
-                    requests:
-                      cpu: 50m
-                      memory: 50Mi
-                    limits:
-                      cpu: 50m
-                      memory: 50Mi
         EOF
 
+    - name: Wait for binfmt registration to finish
+      run: |
+        kubectl wait -n "$EPHEMERAL_NAMESPACE" --for=condition=complete job/qemu-binfmt-register \
+          --timeout=120s
+
+    # clean up so your namespace isn’t cluttered:
+    - name: Delete QEMU registration job
+      run: |
+        kubectl delete job -n "$EPHEMERAL_NAMESPACE" qemu-binfmt-register --wait
 
     # --- deploy the (arm64) build container ------------------------
     - name: Deploy Test Pod Using ARM64 p4a image
