@@ -8,39 +8,33 @@ on:
       - ".github/test/**"
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────
   build-p4a-arm64:
     if: false
     name: Build & Push python-for-android ARM64 Image
     runs-on: ubuntu-latest
     env:
       GH_ACTOR:    ${{ github.actor }}
-      GHCR_IMAGE: ghcr.io/${{ github.repository }}/python-for-android:arm64
-  
+      GHCR_IMAGE:  ghcr.io/${{ github.repository }}/python-for-android:arm64
+
     outputs:
-        image: ${{ env.GHCR_IMAGE }}
+      image: ${{ env.GHCR_IMAGE }}
 
     steps:
-      - name: Checkout python-for-android dockerfile
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           path: docker/p4a
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v2
+      - uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ env.GH_ACTOR }}
           password: ${{ secrets.GH_PIPELINE }}
 
-      - name: Build & push ARM64 image
-        uses: docker/build-push-action@v4
+      - uses: docker/build-push-action@v4
         with:
           context: docker/p4a
           file: docker/p4a/Dockerfile
@@ -49,45 +43,40 @@ jobs:
           tags: ${{ env.GHCR_IMAGE }}
 
       - name: Export image name
-        run: echo "image=${{ env.GHCR_IMAGE }}" >> $GITHUB_OUTPUT
+        run: echo "image=${{ env.GHCR_IMAGE }}" >> "$GITHUB_OUTPUT"
 
-  # ──────────────────────────────────────────────────────────────────────
-
+# ──────────────────────────────────────────────────────────────────────
   ephemeral-test:
-    #needs: build-p4a-arm64
     runs-on: ubuntu-latest
     env:
       EPHEMERAL_IMAGE: ghcr.io/scottiepowell/android_app/python-for-android:latest
-      # OCI + GHCR creds …
-      OCI_USER:          ${{ secrets.OCI_USER }}
-      OCI_FINGERPRINT:   ${{ secrets.OCI_FINGERPRINT }}
-      OCI_TENANCY:       ${{ secrets.OCI_TENANCY }}
-      OCI_REGION:        ${{ secrets.OCI_REGION }}
-      OCI_KEY_FILE:      /home/runner/.oci/oci_api_key.pem
+      OCI_USER:        ${{ secrets.OCI_USER }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_TENANCY:     ${{ secrets.OCI_TENANCY }}
+      OCI_REGION:      ${{ secrets.OCI_REGION }}
+      OCI_KEY_FILE:    /home/runner/.oci/oci_api_key.pem
 
     steps:
     # ────────────────────────────────────────────────────────────────
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: "3.11"
 
-    - name: Install Python Dependencies
+    - name: Install Python deps
       run: pip install python-dotenv oci
 
-    # --- OCI CLI installation (unchanged) --------------------------
+    # ── OCI CLI ────────────────────────────────────────────────────
     - name: Install OCI CLI
       run: |
-        curl -Ls https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh |
-          bash -s -- --accept-all-defaults --install-dir /usr/local/bin
-    - name: Link OCI CLI to PATH
+        curl -Ls https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh \
+          | bash -s -- --accept-all-defaults --install-dir /usr/local/bin
+    - name: Link OCI into PATH
       run: sudo ln -sf /home/runner/bin/oci /usr/local/bin/oci
 
-    # --- generate kube‑config --------------------------
-    - name: Setup OCI Config and Generate Kubeconfig
+    # ── kube-config ────────────────────────────────────────────────
+    - name: Setup OCI config & kubeconfig
       run: |
         mkdir -p ~/.oci
         echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
@@ -95,26 +84,23 @@ jobs:
         python setup_oci_config.py
 
         CLUSTER_ID=$(oci ce cluster list \
-                      --compartment-id "$OCI_TENANCY" \
-                      --query 'data[0].id' --raw-output)
-        echo "Found cluster: $CLUSTER_ID"
-
+            --compartment-id "$OCI_TENANCY" \
+            --query 'data[0].id' --raw-output)
         oci ce cluster create-kubeconfig \
-          --cluster-id "$CLUSTER_ID" \
-          --file /tmp/kubeconfig_test \
-          --region "$OCI_REGION"
-
+            --cluster-id "$CLUSTER_ID" \
+            --file /tmp/kubeconfig_test \
+            --region "$OCI_REGION"
         echo "KUBECONFIG=/tmp/kubeconfig_test" >> "$GITHUB_ENV"
 
-    # --- create an ephemeral namespace -----------------------------
-    - name: Create Ephemeral Namespace
+    # ── new namespace ──────────────────────────────────────────────
+    - name: Create ephemeral namespace
       run: |
         EPHEMERAL_NAMESPACE="build-ns-$(date +%s)"
         echo "EPHEMERAL_NAMESPACE=$EPHEMERAL_NAMESPACE" >> "$GITHUB_ENV"
-        kubectl create ns "$EPHEMERAL_NAMESPACE"
+        kubectl create namespace "$EPHEMERAL_NAMESPACE"
 
-    # --- GHCR pull secret so the cluster can pull your image -------
-    - name: Create Private GHCR Pull Secret
+    # ── GHCR pull secret ───────────────────────────────────────────
+    - name: Add GHCR pull secret
       run: |
         kubectl create secret docker-registry ghcr-pull-secret \
           --docker-server=ghcr.io \
@@ -122,15 +108,14 @@ jobs:
           --docker-password='${{ secrets.GH_PIPELINE }}' \
           --docker-email=noreply@github.com \
           --namespace "$EPHEMERAL_NAMESPACE"
-
         kubectl patch sa default \
           -n "$EPHEMERAL_NAMESPACE" \
           -p '{"imagePullSecrets":[{"name":"ghcr-pull-secret"}]}'
 
-    # apply this in your ephemeral-test job to register all QEMU binfmt handlers via kernel's binfmt_misc mechanism:
+    # ── *** NEW: register binfmt with tonistiigi/binfmt *** ────────
     - name: Register QEMU binfmt_misc on every node
       run: |
-        cat <<EOF | kubectl apply -n "$EPHEMERAL_NAMESPACE" -f -
+        cat <<'EOF' | kubectl apply -n "$EPHEMERAL_NAMESPACE" -f -
         apiVersion: batch/v1
         kind: Job
         metadata:
@@ -143,74 +128,49 @@ jobs:
               restartPolicy: Never
               containers:
                 - name: register
-                  image: multiarch/qemu-user-static:register
-                  args: ["--reset", "-p", "yes"]
+                  image: tonistiigi/binfmt:latest
+                  args: ["--install", "all"]
                   securityContext:
                     privileged: true
         EOF
 
     - name: Wait for binfmt registration to finish
-      id: wait_qemu
       run: |
         set +e
-        kubectl wait -n "$EPHEMERAL_NAMESPACE" --for=condition=complete job/qemu-binfmt-register \
-          --timeout=120s
+        kubectl wait -n "$EPHEMERAL_NAMESPACE" \
+          --for=condition=complete job/qemu-binfmt-register --timeout=120s
         RET=$?
         set -e
-        if [ $RET -ne 0 ]; then
-          echo "::warning::qemu-binfmt-register job did not complete in time, dumping diagnostics…"
-          
-          echo "===== Job Description ====="
-          kubectl describe job qemu-binfmt-register -n "$EPHEMERAL_NAMESPACE" || true
-
-          echo "===== Pods for that Job ====="
+        if [ "$RET" -ne 0 ]; then
+          echo "::warning::qemu-binfmt-register job did not complete, dumping diagnostics"
+          kubectl describe job -n "$EPHEMERAL_NAMESPACE" qemu-binfmt-register || true
           kubectl get pods -n "$EPHEMERAL_NAMESPACE" -l job-name=qemu-binfmt-register || true
-
           POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -l job-name=qemu-binfmt-register \
-                -o jsonpath='{.items[0].metadata.name}') || POD=""
+                 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
           if [ -n "$POD" ]; then
-            echo "===== Logs from init container 'register' in Pod $POD ====="
-            kubectl logs -n "$EPHEMERAL_NAMESPACE" "$POD" -c register || true
-            echo "===== Full Pod YAML ====="
-            kubectl get pod "$POD" -n "$EPHEMERAL_NAMESPACE" -o yaml || true
+            kubectl logs -n "$EPHEMERAL_NAMESPACE" "$POD" || true
           fi
-
           exit 1
         fi
 
-    # clean up so your namespace isn’t cluttered:
     - name: Delete QEMU registration job
-      run: |
-        kubectl delete job -n "$EPHEMERAL_NAMESPACE" qemu-binfmt-register --wait
+      run: kubectl delete job -n "$EPHEMERAL_NAMESPACE" qemu-binfmt-register --wait
 
-    # --- deploy the (arm64) build container ------------------------
-    - name: Deploy Test Pod Using ARM64 p4a image
+    # ── deploy build container ─────────────────────────────────────
+    - name: Deploy build pod
       run: |
         sed "s|IMAGE_PLACEHOLDER|${{ env.EPHEMERAL_IMAGE }}|g" \
           .github/test/ghcr-test-pod.yaml \
           > /tmp/ghcr-test-pod.yaml
         kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
-    
-    # --- wait for container(s) to be ready -------------------------
-    - name: Wait for Test Pod to be Ready
-      id: wait_pod
+
+    # ── wait for pod ready ─────────────────────────────────────────
+    - name: Wait for build pod to be ready
       run: |
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
         echo "POD_NAME=$POD" >> "$GITHUB_ENV"
-
-        set +e
-        kubectl wait \
-          --for=condition=ContainersReady \
-          --timeout=300s pod/"$POD" -n "$EPHEMERAL_NAMESPACE"
-        READY=$?
-        set -e
-
-        if [ "$READY" -ne 0 ]; then
-          echo "::warning::Pod did not reach ContainersReady – dumping logs"
-          kubectl logs "$POD" -n "$EPHEMERAL_NAMESPACE" || true
-          kubectl describe pod "$POD" -n "$EPHEMERAL_NAMESPACE" || true
-          exit 1
-        fi
+        kubectl wait -n "$EPHEMERAL_NAMESPACE" --for=condition=ContainersReady \
+          --timeout=300s pod/"$POD"
 
     # --- copy your repo into /app inside the container -------------
     - name: Copy Source Code to Pod
