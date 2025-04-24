@@ -164,13 +164,31 @@ jobs:
           > /tmp/ghcr-test-pod.yaml
         kubectl apply -f /tmp/ghcr-test-pod.yaml -n "$EPHEMERAL_NAMESPACE"
 
-    # ── wait for pod ready ─────────────────────────────────────────
-    - name: Wait for build pod to be ready
-      run: |
+        # ── wait for the Pod to become Ready ───────────────────────────────
         POD=$(kubectl get pods -n "$EPHEMERAL_NAMESPACE" -o jsonpath='{.items[0].metadata.name}')
         echo "POD_NAME=$POD" >> "$GITHUB_ENV"
-        kubectl wait -n "$EPHEMERAL_NAMESPACE" --for=condition=ContainersReady \
-          --timeout=300s pod/"$POD"
+
+        set +e
+        kubectl wait -n "$EPHEMERAL_NAMESPACE"                          \
+                --for=condition=ContainersReady pod/"$POD"              \
+                --timeout=300s
+        READY=$?
+        set -e
+
+        if [ "$READY" -ne 0 ]; then
+          echo "::warning::Build Pod did not become ready – dumping diagnostics"
+
+          echo "===== kubectl describe pod $POD ====="
+          kubectl describe pod "$POD" -n "$EPHEMERAL_NAMESPACE" || true
+
+          echo "===== Last 200 log lines (all containers) ====="
+          kubectl logs -n "$EPHEMERAL_NAMESPACE" "$POD" --all-containers --tail=200 || true
+
+          echo "===== Full Pod YAML (for events & status) ====="
+          kubectl get pod "$POD" -n "$EPHEMERAL_NAMESPACE" -o yaml || true
+
+          exit 1
+        fi
 
     # --- copy your repo into /app inside the container -------------
     - name: Copy Source Code to Pod
