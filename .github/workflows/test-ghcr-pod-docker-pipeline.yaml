@@ -204,7 +204,7 @@ jobs:
 
         kubectl exec -n "$EPHEMERAL_NAMESPACE" "$POD" -- bash -euxo pipefail -c '
             # --------------------------- 1. Install deps ----------------------------
-            pip3 install --no-cache-dir python-for-android==2024.04.08 cython packaging
+            pip3 install --no-cache-dir python-for-android==2024.01.21 cython packaging
             apt-get update && apt-get install -y --no-install-recommends \
             openjdk-17-jdk-headless curl unzip autoconf automake libtool pkg-config make gcc g++ \
             autoconf automake libtool m4 pkg-config build-essential libltdl-dev
