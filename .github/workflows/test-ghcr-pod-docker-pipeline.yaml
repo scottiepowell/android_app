@@ -130,7 +130,7 @@ jobs:
     # --- register QEMU emulation on your ARM nodes -------------
     - name: Register QEMU emulation on cluster
       run: |
-        kubectl apply -f https://raw.githubusercontent.com/multiarch/qemu-user-static/master/deployment/qemu-user-static-daemonset.yml
+        kubectl apply -f kubectl apply -f https://raw.githubusercontent.com/multiarch/qemu-user-static/v7.2.0-1/deployment/qemu-user-static-daemonset.yaml
 
     # --- deploy the (arm64) build container ------------------------
     - name: Deploy Test Pod Using ARM64 p4a image
