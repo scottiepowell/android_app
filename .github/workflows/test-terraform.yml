@@ -38,11 +38,13 @@ jobs:
       - name: Terraform Apply
         id: provision
         working-directory: .github/test
+        shell: bash
         run: |
             export TF_LOG=DEBUG
             export TF_LOG_PATH="$RUNNER_WORKSPACE/terraform-debug.log"
-            terraform apply -auto-approve
-            echo "instance_ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
+            terraform apply -auto-approve 2> "$TF_LOG_PATH"
+            ip=$(terraform output -raw instance_ip)
+            echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
 
       - name: Test SSH connectivity
         run: |
