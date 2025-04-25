@@ -62,11 +62,40 @@ data "aws_ami" "amazon_linux" {
   owners = ["amazon"]
 }
 
+# ——————————————————————————————————————————————————————————————
+# SECURITY GROUP: allow SSH from anywhere (for testing)
+# ——————————————————————————————————————————————————————————————
+resource "aws_security_group" "allow_ssh" {
+  name        = "${var.key_name}-ssh"
+  description = "Allow SSH inbound"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# we need a data source for the default VPC
+data "aws_vpc" "default" {
+  default = true
+}
+
 resource "aws_instance" "build" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t2.micro"
   # always use your key_name, regardless of whether TF created it
   key_name      = var.key_name
+  vpc_security_group_ids = [aws_security_group.allow_ssh.id]
 
   tags = {
     Name = "buildozer-host"
@@ -78,7 +107,7 @@ resource "aws_instance" "build" {
       host        = self.public_ip
       user        = "ec2-user"
       private_key = var.ssh_private_key
-      timeout     = "5m"
+      timeout     = "10m"
       agent       = false
     }
     inline = [
