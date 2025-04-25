@@ -40,7 +40,8 @@ jobs:
         working-directory: .github/test
         shell: bash
         run: |
-            # send all TF’s debug logs (stderr) into a file
+            TF_BIN="$TERRAFORM_CLI_PATH/terraform-bin"
+            [[ -x "$TF_BIN" ]] || { echo "Binary not found: $TF_BIN" ; exit 1 ; }
             export TF_LOG=DEBUG
             export TF_LOG_PATH="$RUNNER_WORKSPACE/terraform-debug.log"
             terraform apply -auto-approve -no-color
