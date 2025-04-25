@@ -33,7 +33,15 @@ variable "ssh_private_key" {
   sensitive   = true
 }
 
+variable "create_key_pair" {
+  description = "Whether to create the SSH key pair. Set to false if it already exists."
+  type        = bool
+  default     = true
+}
+
+# only create the keypair if create_key_pair = true
 resource "aws_key_pair" "deployer" {
+  count      = var.create_key_pair ? 1 : 0
   key_name   = var.key_name
   public_key = var.ssh_public_key
 }
@@ -57,13 +65,13 @@ data "aws_ami" "amazon_linux" {
 resource "aws_instance" "build" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t2.micro"
-  key_name      = aws_key_pair.deployer.key_name
+  # always use your key_name, regardless of whether TF created it
+  key_name      = var.key_name
 
   tags = {
     Name = "buildozer-host"
   }
 
-  # --- detailed remote-exec with timeout & host check ---
   provisioner "remote-exec" {
     connection {
       type        = "ssh"
@@ -80,9 +88,7 @@ resource "aws_instance" "build" {
     ]
   }
 
-  # --- optional local-exec probe to record final IP ---
   provisioner "local-exec" {
-    # runs on creation complete
     command = "echo Instance IP was ${self.public_ip} >> debug.txt"
   }
 }
