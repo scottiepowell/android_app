@@ -95,6 +95,9 @@ resource "aws_instance" "build" {
   instance_type = "t2.micro"
   # always use your key_name, regardless of whether TF created it
   key_name      = var.key_name
+
+  associate_public_ip_address = true
+
   vpc_security_group_ids = [aws_security_group.allow_ssh.id]
 
   tags = {
