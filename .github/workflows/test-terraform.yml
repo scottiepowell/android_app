@@ -1,0 +1,59 @@
+name: Terraform Build and Destroy
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test-terraform.yml"
+  workflow_dispatch:
+
+env:
+  TF_VAR_key_name:        ${{ secrets.AWS_KEY_NAME }}
+  TF_VAR_ssh_public_key:  ${{ secrets.SSH_PUBLIC_KEY }}
+  TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+  AWS_ACCESS_KEY_ID:      ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  build-ec2:
+    name: Provision EC2 via Terraform
+    runs-on: ubuntu-latest
+
+    outputs:
+      instance_provisioned: ${{ steps.provision_check.outcome }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.11.4"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        id: provision_check
+        run: terraform apply -auto-approve
+
+  destroy-ec2:
+    name: Destroy EC2 via Terraform
+    runs-on: ubuntu-latest
+    needs: build-ec2
+    if: needs.build-ec2.result == 'success'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.11.4"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
