@@ -66,7 +66,7 @@ data "aws_ami" "amazon_linux" {
 # SECURITY GROUP: allow SSH from anywhere (for testing)
 # ——————————————————————————————————————————————————————————————
 resource "aws_security_group" "allow_ssh" {
-  name        = "${var.key_name}-ssh"
+  name_prefix = "${var.key_name}-ssh-"
   description = "Allow SSH inbound"
   vpc_id      = data.aws_vpc.default.id
 
@@ -102,26 +102,6 @@ resource "aws_instance" "build" {
 
   tags = {
     Name = "buildozer-host"
-  }
-
-  provisioner "remote-exec" {
-    connection {
-      type        = "ssh"
-      host        = self.public_ip
-      user        = "ec2-user"
-      private_key = var.ssh_private_key
-      timeout     = "10m"
-      agent       = false
-    }
-    inline = [
-      "echo 'Hello from instance!' && hostname",
-      "echo hello > /tmp/dummy.apk",
-      "chmod 644 /tmp/dummy.apk"
-    ]
-  }
-
-  provisioner "local-exec" {
-    command = "echo Instance IP was ${self.public_ip} >> debug.txt"
   }
 }
 
