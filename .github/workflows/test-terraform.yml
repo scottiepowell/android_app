@@ -42,15 +42,13 @@ jobs:
             export TF_LOG=DEBUG
             export TF_LOG_PATH="$RUNNER_WORKSPACE/terraform-debug.log"
             terraform apply -auto-approve
-            echo "::set-output name=instance_ip::$(terraform output -raw instance_ip)"
+            echo "instance_ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
 
-      - name: Write private key
+      - name: Test SSH connectivity
         run: |
           echo "$TF_VAR_ssh_private_key" > key.pem
           chmod 600 key.pem
 
-      - name: Test SSH connectivity
-        run: |
           ssh -vvv -o StrictHostKeyChecking=no \
             -i key.pem ec2-user@${{ steps.provision.outputs.instance_ip }} \
             echo "SSH OK"
