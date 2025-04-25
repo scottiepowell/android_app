@@ -17,9 +17,8 @@ jobs:
   build-ec2:
     name: Provision EC2 via Terraform
     runs-on: ubuntu-latest
-
     outputs:
-      instance_provisioned: ${{ steps.provision_check.outcome }}
+      instance_ip: ${{ steps.provision.outputs.instance_ip }}
 
     steps:
       - name: Checkout repository
@@ -31,11 +30,16 @@ jobs:
           terraform_version: "1.11.4"
 
       - name: Terraform Init
+        working-directory: .github/test
         run: terraform init
 
       - name: Terraform Apply
-        id: provision_check
-        run: terraform apply -auto-approve
+        id: provision
+        working-directory: .github/test
+        run: |
+          terraform apply -auto-approve
+          # capture the output
+          echo "::set-output name=instance_ip::$(terraform output -raw instance_ip)"
 
   destroy-ec2:
     name: Destroy EC2 via Terraform
@@ -53,7 +57,9 @@ jobs:
           terraform_version: "1.11.4"
 
       - name: Terraform Init
+        working-directory: .github/test
         run: terraform init
 
       - name: Terraform Destroy
+        working-directory: .github/test
         run: terraform destroy -auto-approve
