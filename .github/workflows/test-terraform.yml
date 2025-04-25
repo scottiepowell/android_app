@@ -40,12 +40,19 @@ jobs:
         working-directory: .github/test
         shell: bash
         run: |
+            # send all TF’s debug logs (stderr) into a file
             export TF_LOG=DEBUG
             export TF_LOG_PATH="$RUNNER_WORKSPACE/terraform-debug.log"
-            terraform apply -auto-approve 2> "$TF_LOG_PATH"
-            ip=$(terraform output -raw instance_ip)
+        
+            # capture the JSON output (stdout) into a variable, and keep stderr in TF_LOG_PATH
+            apply_json=$(terraform apply -auto-approve -json 2> "$TF_LOG_PATH")
+        
+            # pull out just the IP
+            ip=$(jq -r '.outputs.instance_ip.value' <<< "$apply_json")
+        
+            # *only* write the name=value into the GITHUB_OUTPUT file
             echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
-
+      
       - name: Test SSH connectivity
         run: |
           echo "$TF_VAR_ssh_private_key" > key.pem
