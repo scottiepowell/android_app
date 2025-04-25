@@ -49,11 +49,16 @@ jobs:
             # *only* write the name=value into the GITHUB_OUTPUT file
             echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
       
-      - name: Test SSH connectivity
+      - name: Write private key
+        shell: bash
         run: |
-          echo "$TF_VAR_ssh_private_key" > key.pem
+          # decode the base64-encoded PEM secret; remove `base64 -d` if you use literal PEM
+          echo "$TF_VAR_ssh_private_key" | base64 -d > key.pem
           chmod 600 key.pem
-
+      
+      - name: Test SSH connectivity
+        shell: bash
+        run: |
           ssh -vvv -o StrictHostKeyChecking=no \
             -i key.pem ec2-user@${{ steps.provision.outputs.instance_ip }} \
             echo "SSH OK"
