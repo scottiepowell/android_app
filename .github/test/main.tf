@@ -7,10 +7,6 @@ terraform {
   }
 }
 
-# ——————————————————————————————————————————————————————————————
-# Providers & Region
-# ——————————————————————————————————————————————————————————————
-
 variable "aws_region" {
   description = "AWS region to deploy into"
   type        = string
@@ -20,10 +16,6 @@ variable "aws_region" {
 provider "aws" {
   region = var.aws_region
 }
-
-# ——————————————————————————————————————————————————————————————
-# SSH Key Pair
-# ——————————————————————————————————————————————————————————————
 
 variable "key_name" {
   description = "Name for the EC2 key pair"
@@ -46,10 +38,6 @@ resource "aws_key_pair" "deployer" {
   public_key = var.ssh_public_key
 }
 
-# ——————————————————————————————————————————————————————————————
-# Find Latest Amazon Linux 2 AMI
-# ——————————————————————————————————————————————————————————————
-
 data "aws_ami" "amazon_linux" {
   most_recent = true
 
@@ -66,10 +54,6 @@ data "aws_ami" "amazon_linux" {
   owners = ["amazon"]
 }
 
-# ——————————————————————————————————————————————————————————————
-# EC2 Instance
-# ——————————————————————————————————————————————————————————————
-
 resource "aws_instance" "build" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t2.micro"
@@ -79,23 +63,29 @@ resource "aws_instance" "build" {
     Name = "buildozer-host"
   }
 
+  # --- detailed remote-exec with timeout & host check ---
   provisioner "remote-exec" {
     connection {
       type        = "ssh"
       host        = self.public_ip
       user        = "ec2-user"
       private_key = var.ssh_private_key
+      timeout     = "5m"
+      agent       = false
     }
     inline = [
+      "echo 'Hello from instance!' && hostname",
       "echo hello > /tmp/dummy.apk",
       "chmod 644 /tmp/dummy.apk"
     ]
   }
-}
 
-# ——————————————————————————————————————————————————————————————
-# Outputs
-# ——————————————————————————————————————————————————————————————
+  # --- optional local-exec probe to record final IP ---
+  provisioner "local-exec" {
+    # runs on creation complete
+    command = "echo Instance IP was ${self.public_ip} >> debug.txt"
+  }
+}
 
 output "instance_ip" {
   description = "Public IP of the EC2 build instance"

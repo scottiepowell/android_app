@@ -38,9 +38,24 @@ jobs:
         id: provision
         working-directory: .github/test
         run: |
+          # enable detailed Terraform logging
+          export TF_LOG=DEBUG
+          export TF_LOG_PATH="$RUNNER_WORKSPACE/terraform-debug.log"
           terraform apply -auto-approve
-          # capture the output
+
+          # capture the IP for downstream steps
           echo "::set-output name=instance_ip::$(terraform output -raw instance_ip)"
+
+      - name: Test SSH connectivity
+        working-directory: .github/test
+        run: |
+          # write out the private key from our TF_VAR
+          echo "$TF_VAR_ssh_private_key" > key.pem
+          chmod 600 key.pem
+
+          # verbose SSH probe
+          ssh -vvv -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ steps.provision.outputs.instance_ip }} \
+            echo "SSH works!"
 
   destroy-ec2:
     name: Destroy EC2 via Terraform
