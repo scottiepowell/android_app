@@ -44,8 +44,8 @@ jobs:
             [[ -x "$TF_BIN" ]] || { echo "Binary not found: $TF_BIN" ; exit 1 ; }
             export TF_LOG=DEBUG
             export TF_LOG_PATH="$RUNNER_WORKSPACE/terraform-debug.log"
-            terraform apply -auto-approve -no-color
-            ip=$(terraform output -raw instance_ip | head -n1 | tr -d '\r')
+            "$TF_BIN" apply -auto-approve -no-color
+            ip=$("$TF_BIN" output -raw instance_ip | head -n1 | tr -d '\r')
             # *only* write the name=value into the GITHUB_OUTPUT file
             echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
       
