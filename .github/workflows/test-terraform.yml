@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - ".github/workflows/test-terraform.yml"
+      - ".github/test/main.tf"
   workflow_dispatch:
 
 env:
