@@ -58,12 +58,7 @@ jobs:
         run: |
           #IP="${{ steps.provision.outputs.instance_id }}"
           aws ec2 wait instance-status-ok --instance-ids "${{ steps.provision.outputs.instance_id }}"
-                      
-      - name: Show instance networking + SG
-        run: |
-            aws ec2 describe-instances --instance-ids "${{ steps.provision.outputs.instance_id }}" --output table \
-            --query "Reservations[0].Instances[0].[PublicIpAddress,SubnetId,VpcId,State.Name,SecurityGroups]"
-
+          
       - name: Poll port 22 until open
         run: |
             IP=${{ steps.provision.outputs.instance_ip }}
