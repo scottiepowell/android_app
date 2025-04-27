@@ -50,9 +50,11 @@ jobs:
             echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
         
       - name: Wait for AWS “instance-status-ok”
+        shell: bash
         run: |
-            aws ec2 wait instance-status-ok --instance-ids $(terraform -chdir=.github/test output -raw instance_id)
-      
+          ID=$(terraform -chdir=.github/test output -raw instance_id | tr -d '\r')
+          aws ec2 wait instance-status-ok --instance-ids "$ID"
+                      
       - name: Show instance networking + SG
         run: |
             aws ec2 describe-instances --instance-ids $(terraform -chdir=.github/test output -raw instance_id) --output table \
