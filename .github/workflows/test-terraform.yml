@@ -48,12 +48,15 @@ jobs:
             ip=$("$TF_BIN" output -raw instance_ip | head -n1 | tr -d '\r')
             # *only* write the name=value into the GITHUB_OUTPUT file
             echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
+
+            id=$("$TF_BIN" output -raw instance_id | head -n1 | tr -d '\r')
+            echo "instance_id=$id" >> "$GITHUB_OUTPUT"
         
       - name: Wait for AWS “instance-status-ok”
         shell: bash
         run: |
-          ID=$(terraform -chdir=.github/test output -raw instance_id | tr -d '\r')
-          aws ec2 wait instance-status-ok --instance-ids "$ID"
+          #IP="${{ steps.provision.outputs.instance_id }}"
+          aws ec2 wait instance-status-ok --instance-ids "${{ steps.provision.outputs.instance_id }}"
                       
       - name: Show instance networking + SG
         run: |
@@ -62,7 +65,7 @@ jobs:
 
       - name: Poll port 22 until open
         run: |
-            IP=$(terraform -chdir=.github/test output -raw instance_ip)
+            IP=${{ steps.provision.outputs.instance_ip }}
             for i in $(seq 1 20); do
             if nc -z -w2 $IP 22 2>/dev/null; then echo "SSH port open 🍀"; exit 0; fi
             echo "[$i/20] port 22 still closed…"; sleep 5
@@ -79,7 +82,7 @@ jobs:
       - name: Test SSH connectivity (verbose)
         shell: bash
         run: |
-          IP=$(terraform -chdir=.github/test output -raw instance_ip)
+          IP="${{ steps.provision.outputs.instance_ip }}"
           ssh -vvv -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP echo "SSH OK"
 
       - name: Build on EC2
