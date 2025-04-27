@@ -58,13 +58,13 @@ jobs:
         run: |
           #IP="${{ steps.provision.outputs.instance_id }}"
           aws ec2 wait instance-status-ok --instance-ids "${{ steps.provision.outputs.instance_id }}"
-          
+
       - name: Poll port 22 until open
         run: |
             IP=${{ steps.provision.outputs.instance_ip }}
-            for i in $(seq 1 20); do
+            for i in $(seq 1 50); do
             if nc -z -w2 $IP 22 2>/dev/null; then echo "SSH port open 🍀"; exit 0; fi
-            echo "[$i/20] port 22 still closed…"; sleep 5
+            echo "[$i/20] port 22 still closed…"; sleep 10
             done
             echo "::error::Port 22 never opened on $IP"; exit 1
       
