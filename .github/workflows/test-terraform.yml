@@ -61,7 +61,7 @@ jobs:
                       
       - name: Show instance networking + SG
         run: |
-            aws ec2 describe-instances --instance-ids $(terraform -chdir=.github/test output -raw instance_id) --output table \
+            aws ec2 describe-instances --instance-ids "${{ steps.provision.outputs.instance_id }}" --output table \
             --query "Reservations[0].Instances[0].[PublicIpAddress,SubnetId,VpcId,State.Name,SecurityGroups]"
 
       - name: Poll port 22 until open
