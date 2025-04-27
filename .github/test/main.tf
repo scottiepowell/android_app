@@ -109,3 +109,8 @@ output "instance_ip" {
   description = "Public IP of the EC2 build instance"
   value       = aws_instance.build.public_ip
 }
+
+output "instance_id" {
+  description = "EC2 instance ID"
+  value       = aws_instance.build.id
+}
