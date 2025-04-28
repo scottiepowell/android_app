@@ -104,8 +104,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: "1.11.4"
+
+      - name: Terraform Init
+        run: terraform -chdir=.github/test init -input=false
+
       - name: Terraform Destroy
-        run: terraform -chdir=.github/test destroy -auto-approve
+        run: terraform -chdir=.github/test destroy -auto-approve -input=false
