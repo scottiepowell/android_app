@@ -96,6 +96,13 @@ jobs:
             echo "dummy APK content" > /tmp/dummy.apk
             chmod 644 /tmp/dummy.apk
           EOF
+      - name: Upload terraform state
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfstate
+          path: |
+            .github/test/terraform.tfstate
+            .github/test/terraform.lock.hcl
 
   destroy-ec2:
     runs-on: ubuntu-latest
@@ -104,6 +111,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Download terraform state
+        uses: actions/download-artifact@v3
+        with:
+          name: tfstate
+          path: .github/test 
 
       - uses: hashicorp/setup-terraform@v2
         with:
