@@ -72,7 +72,7 @@ data "aws_route_table" "main" {
 locals {
   needs_igw_route = length([
     for r in data.aws_route_table.main.routes : r
-    if r.destination_cidr_block == "0.0.0.0/0"
+    if r.cidr_block == "0.0.0.0/0"
   ]) == 0
 }
 
