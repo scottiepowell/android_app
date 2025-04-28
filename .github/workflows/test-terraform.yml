@@ -50,14 +50,14 @@ jobs:
           id=$("$TF_BIN" -chdir=.github/test output -raw instance_id            | head -n1 | tr -d '\r')
           igw=$("$TF_BIN" -chdir=.github/test output -raw internet_gateway_id   | head -n1 | tr -d '\r')
           rt=$("$TF_BIN" -chdir=.github/test output -raw route_table_id         | head -n1 | tr -d '\r')
-          assoc=$("$TF_BIN" -chdir=.github/test output -raw subnet_association_id | head -n1 | tr -d '\r')
+          #assoc=$("$TF_BIN" -chdir=.github/test output -raw subnet_association_id | head -n1 | tr -d '\r')
 
           {
             echo "instance_ip=$ip"
             echo "instance_id=$id"
             echo "igw_id=$igw"
             echo "route_table_id=$rt"
-            echo "subnet_assoc_id=$assoc"
+            #echo "subnet_assoc_id=$assoc"
           } >> "$GITHUB_OUTPUT"
 
       - name: Wait for instance-status-ok
