@@ -53,12 +53,12 @@ jobs:
             id=$("$TF_BIN" output -raw instance_id | head -n1 | tr -d '\r')
             echo "instance_id=$id" >> "$GITHUB_OUTPUT"
         
-      - name: Wait for AWS “instance-status-ok”
+      - name: Wait for AWS “instance-status-ok adn show security groups”
         shell: bash
         run: |
           ID="${{ steps.provision.outputs.instance_id }}"
-          aws ec2 wait instance-status-ok --instance-ids "${{ steps.provision.outputs.instance_id }}"
-          aws ec2 describe-instances --instance-ids $ID --query "Reservations[0].Instances[0].SecurityGroups" --output table
+          aws ec2 wait instance-status-ok --instance-ids "$ID"
+          aws ec2 describe-instances --instance-ids "$ID" --query "Reservations[0].Instances[0].SecurityGroups" --output table
 
       - name: Poll port 22 until open
         run: |
