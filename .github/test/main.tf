@@ -69,10 +69,18 @@ data "aws_route_table" "main" {
   }
 }
 
+locals {
+  needs_igw_route = length([
+    for r in data.aws_route_table.main.routes : r
+    if r.destination_cidr_block == "0.0.0.0/0"
+  ]) == 0
+}
+
 resource "aws_route" "igw_default" {
-  route_table_id         = data.aws_route_table.main.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = local.igw_id
+  count                   = local.needs_igw_route ? 1 : 0
+  route_table_id          = data.aws_route_table.main.id
+  destination_cidr_block  = "0.0.0.0/0"
+  gateway_id              = local.igw_id
 }
 
 #──────────────────────── OPTIONAL KEY PAIR ────────────────────────
