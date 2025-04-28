@@ -1,5 +1,5 @@
 ###############################################################################
-# main.tf  —  works even when the default VPC already has an IGW
+# main.tf  – uses existing IGW + default-VPC main route table
 ###############################################################################
 
 terraform {
@@ -11,9 +11,7 @@ terraform {
   }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# VARIABLES
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── VARIABLES ────────────────────────
 variable "aws_region" {
   type    = string
   default = "us-east-1"
@@ -37,9 +35,7 @@ variable "create_key_pair" {
   default = true
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PROVIDER  &  DEFAULT VPC
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── PROVIDER & DEFAULT VPC ────────────────────────
 provider "aws" {
   region = var.aws_region
 }
@@ -48,9 +44,7 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# USE THE EXISTING INTERNET GATEWAY (default VPC always has one)
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── EXISTING IGW ────────────────────────
 data "aws_internet_gateway" "default" {
   filter {
     name   = "attachment.vpc-id"
@@ -62,43 +56,36 @@ locals {
   igw_id = data.aws_internet_gateway.default.id
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PUBLIC ROUTE TABLE  +  ASSOCIATION
-# ─────────────────────────────────────────────────────────────────────────────
-resource "aws_route_table" "public" {
-  vpc_id = data.aws_vpc.default.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = local.igw_id
+#──────────────────────── MAIN ROUTE TABLE + PUBLIC ROUTE ────────────────────────
+data "aws_route_table" "main" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
   }
 
-  tags = {
-    Name = "ci-public-rt"
+  filter {
+    name   = "association.main"
+    values = ["true"]
   }
 }
 
-# tie the instance’s subnet to the public route table
-resource "aws_route_table_association" "public_assoc" {
-  subnet_id      = aws_instance.build.subnet_id
-  route_table_id = aws_route_table.public.id
+resource "aws_route" "igw_default" {
+  route_table_id         = data.aws_route_table.main.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = local.igw_id
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OPTIONAL SSH KEY PAIR
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── OPTIONAL KEY PAIR ────────────────────────
 resource "aws_key_pair" "deployer" {
   count      = var.create_key_pair ? 1 : 0
   key_name   = var.key_name
   public_key = var.ssh_public_key
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SECURITY GROUP  (SSH only)
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── SECURITY GROUP (SSH) ────────────────────────
 resource "aws_security_group" "allow_ssh" {
   name_prefix = "${var.key_name}-ssh-"
-  description = "Allow SSH from anywhere"
+  description = "Allow SSH"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
@@ -116,9 +103,7 @@ resource "aws_security_group" "allow_ssh" {
   }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# AMAZON LINUX 2  AMI
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── AMAZON LINUX 2 AMI ────────────────────────
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -134,9 +119,7 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# EC2 BUILD INSTANCE
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── EC2 BUILD INSTANCE ────────────────────────
 resource "aws_instance" "build" {
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = "t2.micro"
@@ -149,9 +132,7 @@ resource "aws_instance" "build" {
   }
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OUTPUTS
-# ─────────────────────────────────────────────────────────────────────────────
+#──────────────────────── OUTPUTS ────────────────────────
 output "instance_ip" {
   value = aws_instance.build.public_ip
 }
@@ -165,9 +146,5 @@ output "internet_gateway_id" {
 }
 
 output "route_table_id" {
-  value = aws_route_table.public.id
-}
-
-output "subnet_association_id" {
-  value = aws_route_table_association.public_assoc.id
+  value = data.aws_route_table.main.id
 }
