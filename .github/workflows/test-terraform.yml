@@ -123,14 +123,15 @@ jobs:
             # 1️⃣ Update & install Docker
             sudo yum update -y
             sudo yum install -y docker
-            sudo service docker start
+            sudo systemctl enable docker
+            sudo systemctl start docker
 
             # 2️⃣ Pull the official Buildozer image
-            docker pull kivy/buildozer
+            sudo docker pull kivy/buildozer
 
             # 3️⃣ Run Buildozer inside the container
             cd ~/app
-            docker run --rm \
+            sudo docker run --rm \
               -v "$(pwd)":/home/user/hostcwd \
               -w /home/user/hostcwd \
               kivy/buildozer \
