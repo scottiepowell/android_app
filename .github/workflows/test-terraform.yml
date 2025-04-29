@@ -131,6 +131,9 @@ jobs:
               java-1.8.0-openjdk-devel \
               ant
 
+              sudo mkdir -p /opt/ant/bin
+              sudo ln -sf "$(which ant)" /opt/ant/bin/ant
+
             # ── SDK / NDK expected by buildozer / p4a ───────────────────────
             export ANDROID_HOME="$HOME/android-sdk"
             export ANDROID_SDK_ROOT="$ANDROID_HOME"
