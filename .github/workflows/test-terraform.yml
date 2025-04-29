@@ -116,20 +116,31 @@ jobs:
         shell: bash
         env:
           IP: ${{ steps.ec2.outputs.instance_ip }}
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP << 'REMOTE'
             set -e
 
-            # 1️⃣ Update & install Docker
+            # ── 1️⃣ Install & start Docker ──────────────────────────────────────────
             sudo yum update -y
             sudo yum install -y docker
             sudo systemctl enable docker
             sudo systemctl start docker
 
-            # 2️⃣ Pull the official Buildozer image
-            sudo docker pull kivy/buildozer
+            # ── 2️⃣ Log in to Docker Hub ────────────────────────────────────────────
+            echo "$DOCKERHUB_TOKEN" | sudo docker login --username "$DOCKERHUB_USER" --password-stdin
 
-            # 3️⃣ Run Buildozer inside the container
+            # ── 3️⃣ Pull Buildozer image with retry logic ──────────────────────────
+            for i in 1 2 3; do
+              if sudo docker pull kivy/buildozer; then
+                break
+              fi
+              echo "⚠️  docker pull failed (attempt #$i), retrying in 10s..."
+              sleep 10
+            done
+
+            # ── 4️⃣ Run Buildozer in Docker ────────────────────────────────────────
             cd ~/app
             sudo docker run --rm \
               -v "$(pwd)":/home/user/hostcwd \
@@ -137,9 +148,10 @@ jobs:
               kivy/buildozer \
               android debug
 
-            # (Optional) fix file permissions if needed:
+            # ── 5️⃣ Fix permissions for SCP back ───────────────────────────────────
             sudo chown -R ec2-user:ec2-user ~/app/bin
           REMOTE
+
 
       # 3. Copy the generated APK back to the runner
       - name: Copy APK from EC2
