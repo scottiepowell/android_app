@@ -72,34 +72,82 @@ jobs:
             .github/test/terraform.tfstate
             .github/test/terraform.lock.hcl
 
-################################################################################
-# 2️⃣  CONFIGURE EC2 ───────────────────────────────────────────────────────────
-################################################################################
+  ##########################################################################
+  # 2️⃣  CONFIGURE EC2 – copy code, build APK, copy it back
+  ##########################################################################
   configure-ec2:
-    if: false          # ← flip to true (or remove) when you want this to run
+    if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
     needs: build-ec2
+
+    env:
+      IP: ${{ needs.build-ec2.outputs.instance_ip }}
 
     steps:
       - uses: actions/checkout@v3
 
-      # Write private key for SSH
+      # write the private key again on this runner
       - name: Write private key
         run: |
           echo "$TF_VAR_ssh_private_key" | base64 -d > key.pem
           chmod 600 key.pem
 
-      # Test SSH and run your remote commands
-      - name: Run remote build commands
+      # 1. Copy source tree as tar.gz onto the EC2 instance
+      - name: Copy source to EC2
         shell: bash
-        env:
-          IP: ${{ needs.build-ec2.outputs.instance_ip }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'EOF'
-            echo "Hello from $(hostname)"
-            echo "dummy APK content" > /tmp/dummy.apk
-            chmod 644 /tmp/dummy.apk
-          EOF
+          tar -czf /tmp/src.tar.gz .
+          scp -o StrictHostKeyChecking=no -i key.pem /tmp/src.tar.gz ec2-user@$IP:/tmp/src.tar.gz
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP \
+            'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
+
+      # 2. Run the p4a build commands remotely
+      - name: Build APK with p4a on EC2
+        shell: bash
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
+            set -e
+            export ANDROID_HOME="$ANDROID_HOME"
+            export ANDROID_SDK_ROOT="$ANDROID_HOME"
+            export ANDROIDNDK="$NDK_HOME"
+
+            mkdir -p "$ANDROID_HOME/tools/bin"
+            ln -sf "$ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager" \
+                   "$ANDROID_HOME/tools/bin/sdkmanager"
+            mkdir -p "$ANDROID_HOME/tools"
+            printf '#!/usr/bin/env sh\nexit 0\n' > "$ANDROID_HOME/tools/android"
+            chmod +x "$ANDROID_HOME/tools/android"
+
+            cd /app
+            p4a apk \
+              --sdk-dir="$ANDROID_HOME" \
+              --ndk-dir="$ANDROIDNDK" \
+              --build-tools-version=33.0.2 \
+              --dist-name=whats_in_the_box \
+              --bootstrap=sdl2 \
+              --requirements=kivy,sqlalchemy,click,sqlite3 \
+              --arch=arm64-v8a \
+              --android-api=33 \
+              --package=org.box.whats_in_the_box \
+              --name="What's in the Box" \
+              --version=0.0.1
+          REMOTE
+
+      # 3. Copy the generated APK back to the runner
+      - name: Copy APK from EC2
+        shell: bash
+        run: |
+          mkdir -p /tmp/apks
+          scp -o StrictHostKeyChecking=no -i key.pem \
+              "ec2-user@$IP:/root/.local/share/python-for-android/dists/whats_in_the_box/outputs/apk/*" \
+              /tmp/apks/
+
+      # 4. Upload APK as artifact
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Built-APK
+          path: /tmp/apks
 
 ################################################################################
 # 3️⃣  DESTROY EC2 ─────────────────────────────────────────────────────────────
