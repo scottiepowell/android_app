@@ -120,18 +120,20 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
             set -e
-            export ANDROID_HOME="$ANDROID_HOME"
+            export ANDROID_HOME="$HOME/android-sdk"
             export ANDROID_SDK_ROOT="$ANDROID_HOME"
-            export ANDROIDNDK="$NDK_HOME"
+            export ANDROIDNDK="$HOME/android-ndk"
 
-            mkdir -p "$ANDROID_HOME/tools/bin"
+            mkdir -p "$ANDROID_HOME/cmdline-tools/tools/bin"
+            mkdir -p "$ANDROID_HOME/tools"
+
             ln -sf "$ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager" \
                    "$ANDROID_HOME/tools/bin/sdkmanager"
-            mkdir -p "$ANDROID_HOME/tools"
             printf '#!/usr/bin/env sh\nexit 0\n' > "$ANDROID_HOME/tools/android"
             chmod +x "$ANDROID_HOME/tools/android"
 
-            cd /app
+            cd ~/app
+            
             p4a apk \
               --sdk-dir="$ANDROID_HOME" \
               --ndk-dir="$ANDROIDNDK" \
