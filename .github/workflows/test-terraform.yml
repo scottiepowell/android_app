@@ -155,6 +155,14 @@ jobs:
             # ── ensure buildozer + Cython are installed ────────────────────
             python3 -m pip install --user --quiet buildozer cython
 
+            # ── 1. install & accept licenses ───────────────────────────────────────────
+            yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null
+            sdkmanager --sdk_root="$ANDROID_HOME" \
+              "platform-tools" \
+              "platforms;android-33" \
+              "build-tools;33.0.0" \
+              >/dev/null
+
             # ── build ──────────────────────────────────────────────────────
             cd ~/app
             buildozer -v android debug
