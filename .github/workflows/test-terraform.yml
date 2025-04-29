@@ -125,11 +125,15 @@ jobs:
             export ANDROID_HOME="$HOME/android-sdk"
             export ANDROID_SDK_ROOT="$ANDROID_HOME"
             export ANDROID_NDK_HOME="$HOME/android-ndk"
-            export ANDROIDNDK="$ANDROID_NDK_HOME"      # p4a still looks here
+            export ANDROIDNDK="$ANDROID_NDK_HOME"
 
             # stub sdkmanager + android cmds so buildozer doesn't try to install
             mkdir -p "$ANDROID_HOME/cmdline-tools/tools/bin"
             mkdir -p "$ANDROID_HOME/tools"
+            mkdir -p "$ANDROID_HOME/cmdline-tools/tools/bin"
+            mkdir -p "$ANDROID_HOME/tools/bin"
+            mkdir -p "$ANDROID_HOME/tools"
+
             ln -sf "$ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager" \
                    "$ANDROID_HOME/tools/bin/sdkmanager"
             printf '#!/usr/bin/env sh\nexit 0\n' > "$ANDROID_HOME/tools/android"
