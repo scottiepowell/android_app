@@ -127,12 +127,12 @@ jobs:
             # ── 0. Install real Android SDK cmdline‐tools ─────────────────────────────
             SDK_ROOT="$HOME/android-sdk"
             CLI_ZIP="sdk-tools-linux-3859397.zip"
-            CLT_URL="https://dl.google.com/android/repository/$CLT_ZIP"
+            CLI_URL="https://dl.google.com/android/repository/$CLT_ZIP"
 
             mkdir -p "$SDK_ROOT/cmdline-tools"
-            curl -sSL "$CLT_URL" -o "$CLT_ZIP"
-            unzip -q "$CLT_ZIP" -d "$SDK_ROOT/cmdline-tools"
-            rm "$CLT_ZIP"
+            curl -sSL "$CLI_URL" -o "$CLI_ZIP"
+            unzip -q "$CLI_ZIP" -d "$SDK_ROOT/cmdline-tools"
+            rm "$CLI_ZIP"
             # move into the “latest” layout that sdkmanager expects
             mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
 
