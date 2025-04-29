@@ -121,6 +121,9 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
             set -e
 
+            sudo yum update -y
+            sudo yum install -y git python3-pip python3-devel swig zip unzip ant curl
+
             # ── 0. Install real Android SDK cmdline‐tools ─────────────────────────────
             SDK_ROOT="$HOME/android-sdk"
             CLI_ZIP="sdk-tools-linux-3859397.zip"
