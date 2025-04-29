@@ -121,49 +121,35 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
             set -e
 
-            # ── Install system dependencies ───────────────────────────────────
-            sudo yum update -y
-            sudo yum install -y \
-              git \
-              python3-pip python3-devel \
-              swig \
-              zip unzip \
-              java-1.8.0-openjdk-devel \
-              ant
+            # ── 0. Install real Android SDK cmdline‐tools ─────────────────────────────
+            SDK_ROOT="$HOME/android-sdk"
+            CLT_ZIP="commandlinetools-linux-9477382_latest.zip"
+            CLT_URL="https://dl.google.com/android/repository/$CLT_ZIP"
 
-              sudo mkdir -p /opt/ant/bin
-              sudo ln -sf "$(which ant)" /opt/ant/bin/ant
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            curl -sSL "$CLT_URL" -o "$CLT_ZIP"
+            unzip -q "$CLT_ZIP" -d "$SDK_ROOT/cmdline-tools"
+            rm "$CLT_ZIP"
+            # move into the “latest” layout that sdkmanager expects
+            mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
 
-            # ── SDK / NDK expected by buildozer / p4a ───────────────────────
-            export ANDROID_HOME="$HOME/android-sdk"
+            export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+            export ANDROID_HOME="$SDK_ROOT"
             export ANDROID_SDK_ROOT="$ANDROID_HOME"
-            export ANDROID_NDK_HOME="$HOME/android-ndk"
-            export ANDROIDNDK="$ANDROID_NDK_HOME"
+            export ANDROIDNDK="$HOME/android-ndk"
 
-            # stub sdkmanager + android cmds so buildozer doesn't try to install
-            mkdir -p "$ANDROID_HOME/cmdline-tools/tools/bin"
-            mkdir -p "$ANDROID_HOME/tools"
-            mkdir -p "$ANDROID_HOME/cmdline-tools/tools/bin"
-            mkdir -p "$ANDROID_HOME/tools/bin"
-            mkdir -p "$ANDROID_HOME/tools"
-
-            ln -sf "$ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager" \
-                   "$ANDROID_HOME/tools/bin/sdkmanager"
-            printf '#!/usr/bin/env sh\nexit 0\n' > "$ANDROID_HOME/tools/android"
-            chmod +x "$ANDROID_HOME/tools/android"
-
-            # ── ensure buildozer + Cython are installed ────────────────────
-            python3 -m pip install --user --quiet buildozer cython
-
-            # ── 1. install & accept licenses ───────────────────────────────────────────
+            # ── 1. Install & accept licenses via real sdkmanager ───────────────────────
             yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null
             sdkmanager --sdk_root="$ANDROID_HOME" \
-              "platform-tools" \
-              "platforms;android-33" \
-              "build-tools;33.0.0" \
-              >/dev/null
+                "platform-tools" \
+                "platforms;android-33" \
+                "build-tools;33.0.0" \
+                >/dev/null
 
-            # ── build ──────────────────────────────────────────────────────
+            # ── 2. Ensure buildozer + Cython are installed ────────────────────────────
+            python3 -m pip install --user --quiet buildozer cython
+
+            # ── 3. Build via Buildozer ───────────────────────────────────────────────
             cd ~/app
             buildozer -v android debug
           REMOTE
