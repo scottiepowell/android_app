@@ -21,7 +21,7 @@ env:
 ################################################################################
 jobs:
   build-ec2:
-    if: true          # ← flip to true (or remove) when you want this to run
+    if: false          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
 
     outputs:
@@ -99,7 +99,7 @@ jobs:
           tar -czf /tmp/src.tar.gz .
           scp -o StrictHostKeyChecking=no -i key.pem /tmp/src.tar.gz ec2-user@$IP:/tmp/src.tar.gz
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP \
-            'mkdir -p /app && tar -xzf /tmp/src.tar.gz -C /app'
+            'mkdir -p ~/app && tar -xzf /tmp/src.tar.gz -C ~/app'
 
       # 2. Run the p4a build commands remotely
       - name: Build APK with p4a on EC2
