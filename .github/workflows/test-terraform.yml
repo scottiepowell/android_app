@@ -78,13 +78,22 @@ jobs:
   configure-ec2:
     if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
-    needs: build-ec2
-
-    env:
-      IP: ${{ needs.build-ec2.outputs.instance_ip }}
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: Lookup EC2 instance by tag
+        id: ec2
+        shell: bash
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=buildozer-host" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" --output text)
+          INSTANCE_IP=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+          echo "instance_ip=$INSTANCE_IP" >> "$GITHUB_OUTPUT"
 
       # write the private key again on this runner
       - name: Write private key
@@ -95,6 +104,8 @@ jobs:
       # 1. Copy source tree as tar.gz onto the EC2 instance
       - name: Copy source to EC2
         shell: bash
+        env:
+          IP: ${{ steps.ec2.outputs.instance_ip }}
         run: |
           tar -czf /tmp/src.tar.gz .
           scp -o StrictHostKeyChecking=no -i key.pem /tmp/src.tar.gz ec2-user@$IP:/tmp/src.tar.gz
@@ -104,6 +115,8 @@ jobs:
       # 2. Run the p4a build commands remotely
       - name: Build APK with p4a on EC2
         shell: bash
+        env:
+          IP: ${{ steps.ec2.outputs.instance_ip }}
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
             set -e
@@ -136,6 +149,8 @@ jobs:
       # 3. Copy the generated APK back to the runner
       - name: Copy APK from EC2
         shell: bash
+        env:
+          IP: ${{ steps.ec2.outputs.instance_ip }}
         run: |
           mkdir -p /tmp/apks
           scp -o StrictHostKeyChecking=no -i key.pem \
