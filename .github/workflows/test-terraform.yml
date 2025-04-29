@@ -121,6 +121,15 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
             set -e
 
+            # ── Install system dependencies ───────────────────────────────────
+            sudo yum update -y
+            sudo yum install -y \
+              git \
+              python3-pip python3-devel \
+              swig \
+              zip unzip \
+              java-11-openjdk-devel
+
             # ── SDK / NDK expected by buildozer / p4a ───────────────────────
             export ANDROID_HOME="$HOME/android-sdk"
             export ANDROID_SDK_ROOT="$ANDROID_HOME"
