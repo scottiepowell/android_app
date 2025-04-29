@@ -123,7 +123,7 @@ jobs:
 
             # ── 0. Install real Android SDK cmdline‐tools ─────────────────────────────
             SDK_ROOT="$HOME/android-sdk"
-            CLT_ZIP="commandlinetools-linux-9477382_latest.zip"
+            CLT_ZIP="commandlinetools-linux-latest.zip"
             CLT_URL="https://dl.google.com/android/repository/$CLT_ZIP"
 
             mkdir -p "$SDK_ROOT/cmdline-tools"
