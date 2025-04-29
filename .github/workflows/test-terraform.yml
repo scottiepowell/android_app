@@ -128,7 +128,8 @@ jobs:
               python3-pip python3-devel \
               swig \
               zip unzip \
-              java-11-openjdk-devel
+              java-1.8.0-openjdk-devel \
+              ant
 
             # ── SDK / NDK expected by buildozer / p4a ───────────────────────
             export ANDROID_HOME="$HOME/android-sdk"
