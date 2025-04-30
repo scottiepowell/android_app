@@ -1,50 +1,45 @@
 FROM ghcr.io/kivy/buildozer:latest
 
-########################################################################
-# 0️⃣  prerequisites as root
-########################################################################
+#####################################################################
+# 0️⃣  prerequisites and SDK as root
+#####################################################################
 USER root
-# 0a. make /opt/ant writable
-RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-# 0b. tools we need to download & unzip
+# 0a. tools we need
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends curl unzip && \
     rm -rf /var/lib/apt/lists/*
 
-########################################################################
-# 1️⃣  install Android cmdline-tools under /opt/android-sdk
-########################################################################
-ENV ANDROID_SDK_ROOT=/opt/android-sdk
+# 0b. make /opt/ant writable
+RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-RUN mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+# 0c. download Google cmdline-tools, accept licences, install build-tools 36
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+RUN mkdir -p $ANDROID_SDK_ROOT && \
     curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
       -o /tmp/cli.zip && \
-    unzip -q /tmp/cli.zip -d $ANDROID_SDK_ROOT/cmdline-tools && \
+    unzip -q /tmp/cli.zip -d $ANDROID_SDK_ROOT && \
     rm /tmp/cli.zip && \
-    mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools \
-       $ANDROID_SDK_ROOT/cmdline-tools/latest
+    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest && \
+    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null && \
+    $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+        "platform-tools" \
+        "platforms;android-34" \
+        "build-tools;36.0.0" && \
+    chown -R 1000:1000 $ANDROID_SDK_ROOT      # hand ownership to the non-root user
 
-########################################################################
-# 2️⃣  switch to un-privileged user, install Buildozer
-########################################################################
+#####################################################################
+# 1️⃣  switch to user and install Buildozer
+#####################################################################
 USER user
 ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir buildozer==1.*
 
-########################################################################
-# 3️⃣  accept licences & pre-install build-tools 36
-########################################################################
-RUN yes | sdkmanager --licenses >/dev/null && \
-    sdkmanager \
-      "platform-tools" \
-      "platforms;android-34" \
-      "build-tools;36.0.0"
-
-########################################################################
-# 4️⃣  sanity check (optional)
-########################################################################
+#####################################################################
+# 2️⃣  sanity check (optional)
+#####################################################################
 RUN buildozer --version && \
     sdkmanager --list | grep -E "build-tools;36\.0\.0"
