@@ -164,8 +164,12 @@ jobs:
             sudo docker tag ghcr.io/kivy/buildozer:latest kivy/buildozer:latest
 
             cd ~/app
+
+            # 0️⃣  Make /opt/ant writable just once (runs as root)
+            sudo docker run --rm -u root ghcr.io/kivy/buildozer:latest \
+              bash -c 'mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant'
+
             sudo docker run --rm \
-                -u root \
                 -v "$(pwd)":/home/user/hostcwd \
                 -w /home/user/hostcwd \
             kivy/buildozer android debug
