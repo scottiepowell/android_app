@@ -157,18 +157,27 @@ jobs:
             sudo docker run --rm -u root kivy/buildozer:latest \
                 bash -c 'mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant'
 
-            # 2️⃣ single container: install wheel + build
             sudo docker run --rm \
-            -v "$(pwd)":/home/user/hostcwd \
-            -w /home/user/hostcwd \
-            kivy/buildozer:latest \
-            bash -euxo pipefail -c '
-                python3 -m pip install --upgrade pip setuptools wheel
-                python3 -m pip install buildozer==1.*
-                export PATH="$HOME/.local/bin:$PATH"
-                buildozer --version        # sanity check
-                buildozer android debug
-            '
+                -v "$(pwd)":/home/user/hostcwd \
+                -w /home/user/hostcwd \
+                kivy/buildozer:latest \
+                bash -euxo pipefail -c '
+                    python3 -m pip install --upgrade pip setuptools wheel
+                    python3 -m pip install --user --no-cache-dir buildozer==1.*
+                    python3 - <<'"'"'PY'"'"'
+                import importlib, sys, pkg_resources
+                try:
+                    importlib.import_module("buildozer")
+                    print("✅ buildozer imported – version",
+                        pkg_resources.get_distribution("buildozer").version)
+                except Exception as e:
+                    sys.stderr.write("‼️  buildozer failed to import: %s\n" % e)
+                    sys.exit(1)
+                PY
+                    export PATH="$HOME/.local/bin:$PATH"
+                    buildozer --version
+                    buildozer android debug
+                '
 
             sudo chown -R ec2-user:ec2-user ~/app/bin
             REMOTE
