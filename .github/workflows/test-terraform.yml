@@ -172,7 +172,8 @@ jobs:
             sudo docker run --rm \
                 -v "$(pwd)":/home/user/hostcwd \
                 -w /home/user/hostcwd \
-            kivy/buildozer android debug
+            kivy/buildozer \
+            bash -c "python3 -m pip install --user --quiet buildozer==1.* && buildozer android debug"
         
             sudo chown -R ec2-user:ec2-user ~/app/bin
             REMOTE
