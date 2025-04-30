@@ -21,7 +21,7 @@ env:
 ################################################################################
 jobs:
   build-ec2:
-    if: false          # ← flip to true (or remove) when you want this to run
+    if: true          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
 
     outputs:
@@ -167,7 +167,6 @@ jobs:
             # ── 5️⃣ Fix permissions for SCP back ───────────────────────────────────
             sudo chown -R ec2-user:ec2-user ~/app/bin
           REMOTE
-
 
       # 3. Copy the generated APK back to the runner
       - name: Copy APK from EC2
