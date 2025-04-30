@@ -48,6 +48,11 @@ jobs:
           id=$("$TF_BIN" -chdir=.github/test output -raw instance_id  | head -n1 | tr -d '\r')
           echo "instance_ip=$ip" >> "$GITHUB_OUTPUT"
           echo "instance_id=$id" >> "$GITHUB_OUTPUT"
+          
+      - name: Write private key
+        run: |
+          echo "$TF_VAR_ssh_private_key" | base64 -d > key.pem
+          chmod 600 key.pem
 
       - name: Wait for instance-status-ok
         run: |
@@ -108,12 +113,6 @@ jobs:
             --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
           echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
           echo "instance_ip=$INSTANCE_IP" >> "$GITHUB_OUTPUT"
-
-      # write the private key again on this runner
-      - name: Write private key
-        run: |
-          echo "$TF_VAR_ssh_private_key" | base64 -d > key.pem
-          chmod 600 key.pem
 
       # 1. Copy source tree as tar.gz onto the EC2 instance
       - name: Copy source to EC2
