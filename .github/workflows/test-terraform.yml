@@ -138,55 +138,40 @@ jobs:
             DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
             ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
-            set -e
-        
+            set -euo pipefail
+
             sudo yum -y install docker
             sudo systemctl enable --now docker
-        
-            # Auth for Docker Hub (GHCR is public so no login needed)
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" \
-                | sudo docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-        
-            # Helper that tries GHCR first, then Docker Hub, 5× retry each
-            pull_buildozer() {
-                local image=$1 tag=$2 tries=0
-                until sudo docker pull "${image}:${tag}"; do
-                tries=$((tries+1))
-                [ "$tries" -lt 5 ] || return 1
-                echo "Pull failed ($tries)… sleeping $((tries*10))s"
-                sleep $((tries*10))
-                done
-            }
-        
-            # inside the heredoc on the EC2 host
-            pull_buildozer ghcr.io/kivy/buildozer latest
-            # tag so subsequent docker run uses local image
-            sudo docker tag ghcr.io/kivy/buildozer:latest kivy/buildozer:latest
+
+            # log in once (if you still need it)
+            echo "${DOCKERHUB_TOKEN}" | sudo docker login \
+                --username "${DOCKERHUB_USER}" --password-stdin
+
+            # pull via GHCR, tag as kivy/buildozer
+            sudo docker pull ghcr.io/kivy/buildozer:latest
+            sudo docker tag  ghcr.io/kivy/buildozer:latest kivy/buildozer:latest
 
             cd ~/app
 
-            sudo docker run --rm -u root ghcr.io/kivy/buildozer:latest \
-              bash -euxo pipefail - <<'INNER'
-                # ▸ Make /opt/ant writable
-                mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
+            # 1️⃣ make /opt/ant writable (root in the container)
+            sudo docker run --rm -u root kivy/buildozer:latest \
+                bash -c 'mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant'
 
-                # ▸ Drop to the normal user for everything else
-                su - user -c '
-                set -euxo pipefail
-                cd ~/hostcwd
-
+            # 2️⃣ single container: install wheel + build
+            sudo docker run --rm \
+            -v "$(pwd)":/home/user/hostcwd \
+            -w /home/user/hostcwd \
+            kivy/buildozer:latest \
+            bash -euxo pipefail -c '
                 python3 -m pip install --upgrade pip setuptools wheel
                 python3 -m pip install buildozer==1.*
-
                 export PATH="$HOME/.local/bin:$PATH"
-                buildozer --version            # sanity check
+                buildozer --version        # sanity check
                 buildozer android debug
-                '
-            INNER            
-
-            REMOTE
+            '
 
             sudo chown -R ec2-user:ec2-user ~/app/bin
+            REMOTE
           
       # 3. Copy the generated APK back to the runner
       - name: Copy APK from EC2
