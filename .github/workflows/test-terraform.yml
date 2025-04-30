@@ -63,6 +63,20 @@ jobs:
           done
           exit 1
 
+      # Allow env-vars to pass through sshd once per host 
+      - name: Enable env-pass-through in sshd
+        shell: bash
+        env:
+            IP: ${{ steps.provision.outputs.instance_ip }}
+        run: |
+            ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
+            set -e
+            # Add AcceptEnv only if it's missing
+            sudo grep -q "AcceptEnv DOCKERHUB_USER DOCKERHUB_TOKEN" /etc/ssh/sshd_config || \
+                sudo bash -c 'echo "AcceptEnv DOCKERHUB_USER DOCKERHUB_TOKEN" >> /etc/ssh/sshd_config'
+            sudo systemctl restart sshd
+            REMOTE
+
       # Save tfstate for later jobs
       - name: Upload terraform state
         uses: actions/upload-artifact@v4
@@ -119,7 +133,9 @@ jobs:
           DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP << 'REMOTE'
+          ssh -o StrictHostKeyChecking=no \
+          -o SendEnv=DOCKERHUB_USER,DOCKERHUB_TOKEN \
+          -i key.pem ec2-user@$IP << 'REMOTE'
             set -e
 
             # ── 1️⃣ Install & start Docker ──────────────────────────────────────────
