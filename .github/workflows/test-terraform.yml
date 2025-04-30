@@ -137,15 +137,15 @@ jobs:
             DOCKERHUB_USER:   ${{ secrets.DOCKERHUB_USERNAME }}
             DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-            ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
+            ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP << REMOTE
             set -euo pipefail
 
             sudo yum -y install docker
             sudo systemctl enable --now docker
 
             # log in once (if you still need it)
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login \
-                --username "{{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            #echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login \
+            #    --username "{{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             # pull via GHCR, tag as kivy/buildozer
             sudo docker pull ghcr.io/kivy/buildozer:latest
