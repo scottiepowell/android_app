@@ -165,11 +165,11 @@ jobs:
 
             cd ~/app
 
-            # 0️⃣  Make /opt/ant writable just once (runs as root)
+            # make /opt/ant writable once
             sudo docker run --rm -u root ghcr.io/kivy/buildozer:latest \
-              bash -c 'mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant'
+            bash -c 'mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant'
 
-            # 1️⃣  Install Buildozer wheel — noisy & fails hard if pip errors out
+            # install + build in the same container
             sudo docker run --rm \
             -v "$(pwd)":/home/user/hostcwd \
             -w /home/user/hostcwd \
@@ -177,23 +177,12 @@ jobs:
             bash -euxo pipefail -c "
                 python3 -m pip install --upgrade pip setuptools wheel
                 python3 -m pip install --user buildozer==1.*
-                python3 - <<'PY'
-            import importlib, sys
-            try:
-                importlib.import_module('buildozer')
-            except ImportError as e:
-                sys.stderr.write('‼️  Buildozer still missing after pip install\n')
-                raise
-            PY
+                export PATH=\"\$HOME/.local/bin:\$PATH\"
+                buildozer android debug
             "
 
-            sudo docker run --rm \
-                -v "$(pwd)":/home/user/hostcwd \
-                -w /home/user/hostcwd \
-            kivy/buildozer:latest \
-            bash -c "python3 -m pip install --user --quiet buildozer==1.* && buildozer android debug"
-        
             sudo chown -R ec2-user:ec2-user ~/app/bin
+
             REMOTE
           
       # 3. Copy the generated APK back to the runner
