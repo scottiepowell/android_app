@@ -101,6 +101,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Write private key
+        run: |
+          echo "$TF_VAR_ssh_private_key" | base64 -d > key.pem
+          chmod 600 key.pem
+
       - name: Lookup EC2 instance by tag
         id: ec2
         shell: bash
