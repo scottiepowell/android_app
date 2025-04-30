@@ -151,7 +151,7 @@ jobs:
           IP: ${{ steps.ec2.outputs.instance_ip }}
           IMAGE_TAG: ghcr.io/${{ github.repository_owner }}/buildozer-local:latest
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP << REMOTE
             set -euo pipefail
 
             # pull the pre-baked image
