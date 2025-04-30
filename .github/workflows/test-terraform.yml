@@ -97,7 +97,7 @@ jobs:
   configure-ec2:
     if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
-
+    needs: build-ec2
     steps:
       - uses: actions/checkout@v3
 
