@@ -155,10 +155,10 @@ jobs:
             set -euo pipefail
 
             # pull the pre-baked image
-            docker pull ${IMAGE_TAG}
+            sudo docker pull ${IMAGE_TAG}
 
             cd ~/app
-            docker run --rm \
+            sudo docker run --rm \
             -v "\$PWD":/home/user/hostcwd \
             -w /home/user/hostcwd \
             ${IMAGE_TAG} \
