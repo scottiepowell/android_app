@@ -130,48 +130,40 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP \
             'mkdir -p ~/app && tar -xzf /tmp/src.tar.gz -C ~/app'
 
-      - name: Build APK with Buildozer (Docker) on EC2
-        shell: bash
-        env:
-          IP: ${{ steps.ec2.outputs.instance_ip }}
-          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-          -o SendEnv=DOCKERHUB_USER,DOCKERHUB_TOKEN \
-          -i key.pem ec2-user@$IP << 'REMOTE'
-            set -e
-
-            # ── 1️⃣ Install & start Docker ──────────────────────────────────────────
-            sudo yum update -y
-            sudo yum install -y docker
-            sudo systemctl enable docker
-            sudo systemctl start docker
-
-            # ── 2️⃣ Log in to Docker Hub ────────────────────────────────────────────
-            echo "$DOCKERHUB_TOKEN" | sudo docker login --username "$DOCKERHUB_USER" --password-stdin
-
-            # ── 3️⃣ Pull Buildozer image with retry logic ──────────────────────────
-            for i in 1 2 3; do
-              if sudo docker pull kivy/buildozer; then
-                break
-              fi
-              echo "⚠️  docker pull failed (attempt #$i), retrying in 10s..."
-              sleep 10
-            done
-
-            # ── 4️⃣ Run Buildozer in Docker ────────────────────────────────────────
-            cd ~/app
-            sudo docker run --rm \
-              -v "$(pwd)":/home/user/hostcwd \
-              -w /home/user/hostcwd \
-              kivy/buildozer \
-              android debug
-
-            # ── 5️⃣ Fix permissions for SCP back ───────────────────────────────────
-            sudo chown -R ec2-user:ec2-user ~/app/bin
-          REMOTE
-
+            - name: Build APK with Buildozer (Docker) on EC2
+            shell: bash
+            env:
+              IP:               ${{ steps.ec2.outputs.instance_ip }}
+              DOCKERHUB_USER:   ${{ secrets.DOCKERHUB_USERNAME }}   # scottiee
+              DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
+            run: |
+              ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<-REMOTE
+                set -e
+          
+                sudo yum -y install docker
+                sudo systemctl enable --now docker
+          
+                # Login with the secrets that GitHub already substituted
+                echo "${{ secrets.DOCKERHUB_TOKEN }}" \
+                  | sudo docker login \
+                      --username "${{ secrets.DOCKERHUB_USERNAME }}" \
+                      --password-stdin
+          
+                # Pull with retry
+                for i in 1 2 3; do
+                  sudo docker pull kivy/buildozer && break
+                  echo "docker pull failed (#\$i)… retrying in 10 s"; sleep 10
+                done
+          
+                cd ~/app
+                sudo docker run --rm \
+                  -v "\$(pwd)":/home/user/hostcwd \
+                  -w /home/user/hostcwd \
+                  kivy/buildozer android debug
+          
+                sudo chown -R ec2-user:ec2-user ~/app/bin
+              REMOTE
+          
       # 3. Copy the generated APK back to the runner
       - name: Copy APK from EC2
         shell: bash
