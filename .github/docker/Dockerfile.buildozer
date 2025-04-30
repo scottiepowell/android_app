@@ -10,7 +10,8 @@ RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 # 1️⃣  Switch back to uid 1000 (“user”) and install Buildozer
 # ------------------------------------------------------------
 USER user
-ENV PATH=/home/user/.local/bin:$PATH
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/tools/bin:$PATH
 
 # +++ expose sdkmanager +++   ← add this line
 ENV PATH=/opt/android-sdk/cmdline-tools/latest/bin:$PATH
