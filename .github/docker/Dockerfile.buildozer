@@ -4,22 +4,28 @@ FROM ghcr.io/kivy/buildozer:latest
 USER root
 RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-# 1. switch back to normal user
-USER user
+# 1. add Android cmdline-tools
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV PATH=/home/user/.local/bin:$PATH
+RUN mkdir -p $ANDROID_SDK_ROOT && \
+    curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cli.zip && \
+    unzip -q /tmp/cli.zip -d $ANDROID_SDK_ROOT && \
+    rm /tmp/cli.zip && \
+    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
 
-# 2. install buildozer
+# 2. switch back to user, install buildozer
+USER user
+ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir buildozer==1.*
 
-# 3. accept licences & install sdk components
-RUN yes | /opt/android-sdk/tools/bin/sdkmanager --licenses >/dev/null && \
-    /opt/android-sdk/tools/bin/sdkmanager \
-        "platform-tools" \
-        "platforms;android-34" \
-        "build-tools;36.0.0"
+# 3. accept licences & install SDK packages
+RUN yes | sdkmanager --licenses >/dev/null && \
+    sdkmanager \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;36.0.0"
 
-# 4. sanity check (optional)
+# 4. sanity check
 RUN buildozer --version && \
-    /opt/android-sdk/tools/bin/sdkmanager --list | grep -E "build-tools;36\.0\.0"
+    sdkmanager --list | grep -E "build-tools;36\.0\.0"
