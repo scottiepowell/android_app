@@ -164,18 +164,20 @@ jobs:
                 bash -euxo pipefail -c '
                     python3 -m pip install --upgrade pip setuptools wheel
                     python3 -m pip install --user --no-cache-dir buildozer==1.*
-                    python3 - <<'"'"'PY'"'"'
-                import importlib, sys, pkg_resources
+
+                    # verify the wheel is really importable
+                    python3 - <<EOF
+                import importlib, pkg_resources, sys
                 try:
                     importlib.import_module("buildozer")
-                    print("✅ buildozer imported – version",
-                        pkg_resources.get_distribution("buildozer").version)
-                except Exception as e:
-                    sys.stderr.write("‼️  buildozer failed to import: %s\n" % e)
+                    print("✅ buildozer", pkg_resources.get_distribution("buildozer").version)
+                except Exception as err:
+                    sys.stderr.write(f"‼️  buildozer import failed: {err}\n")
                     sys.exit(1)
-                PY
+                EOF
+
                     export PATH="$HOME/.local/bin:$PATH"
-                    buildozer --version
+                    buildozer --version          # sanity check
                     buildozer android debug
                 '
 
