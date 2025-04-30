@@ -11,10 +11,9 @@ RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 # ------------------------------------------------------------
 USER user
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/tools/bin:$PATH
-
-# +++ expose sdkmanager +++   ← add this line
-ENV PATH=/opt/android-sdk/cmdline-tools/latest/bin:$PATH
+ENV PATH=/home/user/.local/bin:\
+$ANDROID_SDK_ROOT/tools/bin:\
+$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir buildozer==1.*
