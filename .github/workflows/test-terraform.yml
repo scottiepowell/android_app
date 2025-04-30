@@ -144,8 +144,8 @@ jobs:
             sudo systemctl enable --now docker
 
             # log in once (if you still need it)
-            echo "${DOCKERHUB_TOKEN}" | sudo docker login \
-                --username "${DOCKERHUB_USER}" --password-stdin
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login \
+                --username "{{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
             # pull via GHCR, tag as kivy/buildozer
             sudo docker pull ghcr.io/kivy/buildozer:latest
