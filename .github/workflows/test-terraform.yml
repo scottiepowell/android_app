@@ -161,25 +161,24 @@ jobs:
                 -v "$(pwd)":/home/user/hostcwd \
                 -w /home/user/hostcwd \
                 kivy/buildozer:latest \
-                bash -euxo pipefail -c '
+                bash -euxo pipefail -c "
                     python3 -m pip install --upgrade pip setuptools wheel
                     python3 -m pip install --user --no-cache-dir buildozer==1.*
 
-                    # verify the wheel is really importable
-                    python3 - <<EOF
+                    python3 - <<'PY'
                 import importlib, pkg_resources, sys
                 try:
-                    importlib.import_module("buildozer")
-                    print("✅ buildozer", pkg_resources.get_distribution("buildozer").version)
+                    importlib.import_module('buildozer')
+                    print('✅ buildozer', pkg_resources.get_distribution('buildozer').version)
                 except Exception as err:
-                    sys.stderr.write(f"‼️  buildozer import failed: {err}\n")
+                    sys.stderr.write(f'‼️  buildozer import failed: {err}\\n')
                     sys.exit(1)
-                EOF
+                PY
 
-                    export PATH="$HOME/.local/bin:$PATH"
+                    export PATH=\"\$HOME/.local/bin:\$PATH\"
                     buildozer --version          # sanity check
                     buildozer android debug
-                '
+                "
 
             sudo chown -R ec2-user:ec2-user ~/app/bin
             REMOTE
