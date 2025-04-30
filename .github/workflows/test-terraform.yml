@@ -6,6 +6,7 @@ on:
       - ".github/workflows/test-terraform.yml"
       - ".github/test/main.tf"
       - ".github/docker/Dockerfile.buildozer"
+      - "buildozer.spec"
   workflow_dispatch:
 
 env:
