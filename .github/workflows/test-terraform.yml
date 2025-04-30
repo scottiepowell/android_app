@@ -158,18 +158,16 @@ jobs:
                 done
             }
         
-            # 1️⃣  GHCR attempt
-            if ! pull_buildozer ghcr.io/kivy/buildozer latest; then
-                echo "GHCR failed, falling back to Docker Hub…"
-                # 2️⃣  Docker Hub attempt
-                pull_buildozer kivy/buildozer latest
-            fi
-        
+            # inside the heredoc on the EC2 host
+            pull_buildozer ghcr.io/kivy/buildozer latest
+            # tag so subsequent docker run uses local image
+            sudo docker tag ghcr.io/kivy/buildozer:latest kivy/buildozer:latest
+
             cd ~/app
             sudo docker run --rm \
                 -v "$(pwd)":/home/user/hostcwd \
                 -w /home/user/hostcwd \
-                kivy/buildozer android debug
+            kivy/buildozer android debug
         
             sudo chown -R ec2-user:ec2-user ~/app/bin
             REMOTE
