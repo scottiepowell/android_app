@@ -1,31 +1,25 @@
 FROM ghcr.io/kivy/buildozer:latest
 
-# ------------------------------------------------------------
-# 0️⃣  Make /opt/ant writable (as before)
-# ------------------------------------------------------------
+# 0. make /opt/ant writable
 USER root
 RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-# ------------------------------------------------------------
-# 1️⃣  Switch back to uid 1000 (“user”) and install Buildozer
-# ------------------------------------------------------------
+# 1. switch back to normal user
 USER user
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV PATH=/home/user/.local/bin:\
-$ANDROID_SDK_ROOT/tools/bin:\
-$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+ENV PATH=/home/user/.local/bin:$PATH
 
+# 2. install buildozer
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir buildozer==1.*
 
-# Install SDK components and accept licences
-RUN yes | sdkmanager --licenses >/dev/null && \
-    sdkmanager \
+# 3. accept licences & install sdk components
+RUN yes | /opt/android-sdk/tools/bin/sdkmanager --licenses >/dev/null && \
+    /opt/android-sdk/tools/bin/sdkmanager \
         "platform-tools" \
         "platforms;android-34" \
         "build-tools;36.0.0"
 
-# ------------------------------------------------------------
-# 3️⃣  Sanity check (optional)
-# ------------------------------------------------------------
-RUN buildozer --version && sdkmanager --list | grep -E "build-tools;36.0.0"
+# 4. sanity check (optional)
+RUN buildozer --version && \
+    /opt/android-sdk/tools/bin/sdkmanager --list | grep -E "build-tools;36\.0\.0"
