@@ -13,21 +13,23 @@ RUN apt-get update -qq && \
 # 0b. make /opt/ant writable
 RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-# 0c. download Google cmdline-tools, accept licences, install build-tools 36
+# 0c. download Google cmdline-tools and install them
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-RUN mkdir -p $ANDROID_SDK_ROOT && \
-    curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
-      -o /tmp/cli.zip && \
-    unzip -q /tmp/cli.zip -d $ANDROID_SDK_ROOT && \
+RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    curl -sSL \
+        https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+        -o /tmp/cli.zip && \
+    unzip -q /tmp/cli.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
     rm /tmp/cli.zip && \
-    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
-    mv $ANDROID_SDK_ROOT/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest && \
-    yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null && \
-    $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+    #           ▼————— move the *inner* folder only
+    mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools \
+       ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
+    yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null && \
+    ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
         "platform-tools" \
         "platforms;android-34" \
         "build-tools;36.0.0" && \
-    chown -R 1000:1000 $ANDROID_SDK_ROOT      # hand ownership to the non-root user
+    chown -R 1000:1000 ${ANDROID_SDK_ROOT}
 
 #####################################################################
 # 1️⃣  switch to user and install Buildozer
