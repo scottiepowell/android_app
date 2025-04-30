@@ -165,6 +165,7 @@ jobs:
 
             cd ~/app
             sudo docker run --rm \
+                -u root \
                 -v "$(pwd)":/home/user/hostcwd \
                 -w /home/user/hostcwd \
             kivy/buildozer android debug
