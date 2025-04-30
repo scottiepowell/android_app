@@ -9,25 +9,21 @@ RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 # ------------------------------------------------------------
 # 1️⃣  Switch back to uid 1000 (“user”) and install Buildozer
 # ------------------------------------------------------------
-USER user
-ENV PATH=/home/user/.local/bin:$PATH
-
-RUN python3 -m pip install --upgrade pip setuptools wheel && \
-    python3 -m pip install --no-cache-dir buildozer==1.*
-
-# ------------------------------------------------------------
-# 2️⃣  Install required Android SDK packages & accept licenses
-# ------------------------------------------------------------
-ENV ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
-ENV ANDROID_SDK_ROOT=$ANDROID_HOME
-ENV PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
-
-# The base image already has cmdline-tools—just install pieces we need
-RUN yes | sdkmanager --licenses >/dev/null && \
-    sdkmanager \
-      "platform-tools" \
-      "platforms;android-34" \
-      "build-tools;36.0.0"
+    USER user
+    ENV PATH=/home/user/.local/bin:$PATH
+    
+    # +++ expose sdkmanager +++   ← add this line
+    ENV PATH=/opt/android-sdk/cmdline-tools/latest/bin:$PATH
+    
+    RUN python3 -m pip install --upgrade pip setuptools wheel && \
+        python3 -m pip install --no-cache-dir buildozer==1.*
+    
+    # Install SDK components and accept licences
+    RUN yes | sdkmanager --licenses >/dev/null && \
+        sdkmanager \
+          "platform-tools" \
+          "platforms;android-34" \
+          "build-tools;36.0.0"
 
 # ------------------------------------------------------------
 # 3️⃣  Sanity check (optional)
