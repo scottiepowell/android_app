@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/test-terraform.yml"
       - ".github/test/main.tf"
+      - ".github/docker/Dockerfile.buildozer"
   workflow_dispatch:
 
 env:

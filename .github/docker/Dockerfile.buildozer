@@ -1,16 +1,35 @@
-# .github/docker/Dockerfile.buildozer
 FROM ghcr.io/kivy/buildozer:latest
 
-## — 0. make /opt/ant writable for uid 1000 (“user”) -----------------
+# ------------------------------------------------------------
+# 0️⃣  Make /opt/ant writable (as before)
+# ------------------------------------------------------------
 USER root
 RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-## — 1. install buildozer wheel as uid 1000 --------------------------
+# ------------------------------------------------------------
+# 1️⃣  Switch back to uid 1000 (“user”) and install Buildozer
+# ------------------------------------------------------------
 USER user
 ENV PATH=/home/user/.local/bin:$PATH
-ARG BUILD0ZER_VER=1.*
-RUN python3 -m pip install --upgrade pip setuptools wheel && \
-    python3 -m pip install --no-cache-dir buildozer==${BUILD0ZER_VER}
 
-## — 2. sanity check (optional) --------------------------------------
-RUN buildozer --version
+RUN python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install --no-cache-dir buildozer==1.*
+
+# ------------------------------------------------------------
+# 2️⃣  Install required Android SDK packages & accept licenses
+# ------------------------------------------------------------
+ENV ANDROID_HOME=/home/user/.buildozer/android/platform/android-sdk
+ENV ANDROID_SDK_ROOT=$ANDROID_HOME
+ENV PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+
+# The base image already has cmdline-tools—just install pieces we need
+RUN yes | sdkmanager --licenses >/dev/null && \
+    sdkmanager \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;36.0.0"
+
+# ------------------------------------------------------------
+# 3️⃣  Sanity check (optional)
+# ------------------------------------------------------------
+RUN buildozer --version && sdkmanager --list | grep -E "build-tools;36.0.0"
