@@ -165,25 +165,28 @@ jobs:
 
             cd ~/app
 
-            # make /opt/ant writable once
             sudo docker run --rm -u root ghcr.io/kivy/buildozer:latest \
-            bash -c 'mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant'
+              bash -euxo pipefail - <<'INNER'
+                # ▸ Make /opt/ant writable
+                mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
-            # install + build in the same container
-            sudo docker run --rm \
-            -v "$(pwd)":/home/user/hostcwd \
-            -w /home/user/hostcwd \
-            ghcr.io/kivy/buildozer:latest \
-            bash -euxo pipefail -c "
+                # ▸ Drop to the normal user for everything else
+                su - user -c '
+                set -euxo pipefail
+                cd ~/hostcwd
+
                 python3 -m pip install --upgrade pip setuptools wheel
-                python3 -m pip install --user buildozer==1.*
-                export PATH=\"\$HOME/.local/bin:\$PATH\"
-                buildozer android debug
-            "
+                python3 -m pip install buildozer==1.*
 
-            sudo chown -R ec2-user:ec2-user ~/app/bin
+                export PATH="$HOME/.local/bin:$PATH"
+                buildozer --version            # sanity check
+                buildozer android debug
+                '
+            INNER            
 
             REMOTE
+
+            sudo chown -R ec2-user:ec2-user ~/app/bin
           
       # 3. Copy the generated APK back to the runner
       - name: Copy APK from EC2
