@@ -139,7 +139,7 @@ jobs:
         run: |
             docker build -t $IMAGE_TAG \
                 -f .github/docker/Dockerfile.buildozer .
-            echo ${{ secrets.GITHUB_TOKEN }} | \
+            echo ${{ secrets.GH_PIPELINE }} | \
                 docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker push $IMAGE_TAG
 
