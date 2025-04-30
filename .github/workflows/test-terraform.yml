@@ -21,7 +21,7 @@ env:
 ################################################################################
 jobs:
   build-ec2:
-    if: true          # ← flip to true (or remove) when you want this to run
+    if: false          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
 
     outputs:
@@ -97,7 +97,7 @@ jobs:
   configure-ec2:
     if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
-    needs: build-ec2
+    #needs: build-ec2
     steps:
       - uses: actions/checkout@v3
 
@@ -134,30 +134,40 @@ jobs:
         shell: bash
         env:
             IP:               ${{ steps.ec2.outputs.instance_ip }}
-            DOCKERHUB_USER:   ${{ secrets.DOCKERHUB_USERNAME }}   # scottiee
+            DOCKERHUB_USER:   ${{ secrets.DOCKERHUB_USERNAME }}
             DOCKERHUB_TOKEN:  ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-            ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<-REMOTE
+            ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP <<'REMOTE'
             set -e
         
             sudo yum -y install docker
             sudo systemctl enable --now docker
         
-            # Login with the secrets that GitHub already substituted
+            # Auth for Docker Hub (GHCR is public so no login needed)
             echo "${{ secrets.DOCKERHUB_TOKEN }}" \
-                | sudo docker login \
-                    --username "${{ secrets.DOCKERHUB_USERNAME }}" \
-                    --password-stdin
+                | sudo docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
         
-            # Pull with retry
-            for i in 1 2 3; do
-                sudo docker pull kivy/buildozer && break
-                echo "docker pull failed (#\$i)… retrying in 10 s"; sleep 10
-            done
+            # Helper that tries GHCR first, then Docker Hub, 5× retry each
+            pull_buildozer() {
+                local image=$1 tag=$2 tries=0
+                until sudo docker pull "${image}:${tag}"; do
+                tries=$((tries+1))
+                [ "$tries" -lt 5 ] || return 1
+                echo "Pull failed ($tries)… sleeping $((tries*10))s"
+                sleep $((tries*10))
+                done
+            }
+        
+            # 1️⃣  GHCR attempt
+            if ! pull_buildozer ghcr.io/kivy/buildozer latest; then
+                echo "GHCR failed, falling back to Docker Hub…"
+                # 2️⃣  Docker Hub attempt
+                pull_buildozer kivy/buildozer latest
+            fi
         
             cd ~/app
             sudo docker run --rm \
-                -v "\$(pwd)":/home/user/hostcwd \
+                -v "$(pwd)":/home/user/hostcwd \
                 -w /home/user/hostcwd \
                 kivy/buildozer android debug
         
