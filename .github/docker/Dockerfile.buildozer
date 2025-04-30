@@ -1,0 +1,16 @@
+# .github/docker/Dockerfile.buildozer
+FROM ghcr.io/kivy/buildozer:latest
+
+## — 0. make /opt/ant writable for uid 1000 (“user”) -----------------
+USER root
+RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
+
+## — 1. install buildozer wheel as uid 1000 --------------------------
+USER user
+ENV PATH=/home/user/.local/bin:$PATH
+ARG BUILD0ZER_VER=1.*
+RUN python3 -m pip install --upgrade pip setuptools wheel && \
+    python3 -m pip install --no-cache-dir buildozer==${BUILD0ZER_VER}
+
+## — 2. sanity check (optional) --------------------------------------
+RUN buildozer --version
