@@ -165,7 +165,7 @@ jobs:
             -v "\$PWD":/home/user/hostcwd \
             -w /home/user/hostcwd \
             ${IMAGE_TAG} \
-            buildozer android debug
+            android debug
           REMOTE
           
       # 3. Copy the generated APK back to the runner
