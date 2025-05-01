@@ -13,8 +13,9 @@ source.include_patterns = src/*, assets/pencil.png
 android.build_tools_version = 36.0.0
 android.api = 33
 android.sdk_path = /opt/android-sdk
-
 android.ant_path = /opt/ant
+android.manifest_placeholders = extractNativeLibs=false
+
 
 [buildozer]
 storage_dir = /.buildozer

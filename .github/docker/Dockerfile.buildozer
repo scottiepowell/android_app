@@ -40,6 +40,8 @@ RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
 # 1️⃣  switch to user and install Buildozer
 #####################################################################
 USER user
+
+ENV GRADLE_OPTS="-Xmx1024m -Dorg.gradle.daemon=true"
 ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
