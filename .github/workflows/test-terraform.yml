@@ -23,7 +23,7 @@ env:
 ################################################################################
 jobs:
   build-ec2:
-    if: true          # ← flip to true (or remove) when you want this to run
+    if: false          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
 
     outputs:
@@ -99,7 +99,7 @@ jobs:
   configure-ec2:
     if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
-    needs: build-ec2
+    #needs: build-ec2
     steps:
       - uses: actions/checkout@v3
 
@@ -131,6 +131,22 @@ jobs:
           scp -o StrictHostKeyChecking=no -i key.pem /tmp/src.tar.gz ec2-user@$IP:/tmp/src.tar.gz
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP \
             'mkdir -p ~/app && tar -xzf /tmp/src.tar.gz -C ~/app'
+      
+      - name: Install Docker on EC2
+        shell: bash
+        env:
+          IP: ${{ steps.ec2.outputs.instance_ip }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP << 'REMOTE'
+            set -euo pipefail
+            # install & enable docker on Amazon Linux 2
+            sudo yum update -y
+            sudo amazon-linux-extras install -y docker
+            sudo systemctl enable docker
+            sudo systemctl start docker
+            # allow ec2-user to docker without sudo
+            sudo usermod -aG docker ec2-user
+          REMOTE
 
       # ------------------------------------------------------------------
       # 1️⃣  Build + push the custom Buildozer image on the runner
