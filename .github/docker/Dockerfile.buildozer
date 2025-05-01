@@ -15,20 +15,29 @@ RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
 
 # 0c. download Google cmdline-tools and install them
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
+
 RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
-    curl -sSL \
-        https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
-        -o /tmp/cli.zip && \
+    curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+         -o /tmp/cli.zip && \
     unzip -q /tmp/cli.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
     rm /tmp/cli.zip && \
-    #           ▼————— move the *inner* folder only
+    # move the *inner* folder only
     mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools \
        ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
+    \
+    # ---------- create “tools/bin” compatibility symlink ----------
+    mkdir -p ${ANDROID_SDK_ROOT}/tools/bin && \
+    ln -s ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
+          ${ANDROID_SDK_ROOT}/tools/bin/sdkmanager && \
+    \
+    # ---------- accept licences & install the bits we need ----------
     yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null && \
     ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
         "platform-tools" \
         "platforms;android-34" \
         "build-tools;36.0.0" && \
+    \
+    # hand SDK ownership to the unprivileged user
     chown -R 1000:1000 ${ANDROID_SDK_ROOT}
 
 #####################################################################
