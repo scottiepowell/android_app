@@ -47,6 +47,12 @@ ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir buildozer==1.*
 
+# --- Gradle heap bump ----------------------------------------------
+RUN mkdir -p /home/user/.gradle && \
+    echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" \
+        > /home/user/.gradle/gradle.properties && \
+    chown -R user:user /home/user/.gradle
+
 #####################################################################
 # 2️⃣  sanity check (optional)
 #####################################################################
