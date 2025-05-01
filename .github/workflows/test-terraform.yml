@@ -23,7 +23,7 @@ env:
 ################################################################################
 jobs:
   build-ec2:
-    if: true          # ← flip to true (or remove) when you want this to run
+    if: false          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
 
     outputs:
@@ -99,7 +99,7 @@ jobs:
   configure-ec2:
     if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
-    needs: build-ec2
+    #needs: build-ec2
     steps:
       - uses: actions/checkout@v3
 
