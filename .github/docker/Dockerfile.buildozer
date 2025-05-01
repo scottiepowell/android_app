@@ -1,7 +1,10 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Base image: Kivy team’s Buildozer runtime
+# ──────────────────────────────────────────────────────────────────────────────
 FROM ghcr.io/kivy/buildozer:latest
 
-# Use bash so pipefail & nounset work
-SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+# Use bash so pipefail, nounset, etc. work in RUN
+SHELL ["/bin/bash", "-eo", "pipefail", "-u", "-c"]
 
 ###############################################################################
 # 0️⃣  System prerequisites + Android SDK/NDK (run as root)
@@ -9,53 +12,53 @@ SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 USER root
 
 ENV ANDROID_SDK_ROOT=/opt/android-sdk \
-    PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+    PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/tools/bin:$PATH
 
-RUN bash -euo pipefail && \
-    # --- install minimal tools --- \
-    apt-get update -qq && \
-    apt-get install -y --no-install-recommends curl unzip && \
-    rm -rf /var/lib/apt/lists/* && \
-    \
-    # --- get cmdline-tools --- \
-    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
-    curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
-         -o /tmp/cli.zip && \
-    unzip -q /tmp/cli.zip -d $ANDROID_SDK_ROOT/cmdline-tools && \
-    rm /tmp/cli.zip && \
-    mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools \
-       $ANDROID_SDK_ROOT/cmdline-tools/latest && \
-    \
-    # --- legacy tools/bin shim for sdkmanager --- \
-    mkdir -p $ANDROID_SDK_ROOT/tools/bin && \
-    ln -sf $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
-           $ANDROID_SDK_ROOT/tools/bin/sdkmanager && \
-    \
-    # --- accept licences & install SDK + NDK --- \
-    yes | sdkmanager --licenses >/dev/null && \
-    sdkmanager \
-      "platform-tools" \
-      "platforms;android-34" \
-      "build-tools;36.0.0" \
-      "ndk;25.2.9519653" && \
-    \
-    # --- fix ownership --- \
-    chown -R 1000:1000 $ANDROID_SDK_ROOT
+RUN \
+  apt-get update -qq && \
+  apt-get install -y --no-install-recommends curl unzip && \
+  rm -rf /var/lib/apt/lists/* && \
+  \
+  # download & unpack cmdline-tools
+  mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+  curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+       -o /tmp/cmdline.zip && \
+  unzip -q /tmp/cmdline.zip -d $ANDROID_SDK_ROOT/cmdline-tools && \
+  rm /tmp/cmdline.zip && \
+  mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools \
+     $ANDROID_SDK_ROOT/cmdline-tools/latest && \
+  \
+  # create legacy shim
+  mkdir -p $ANDROID_SDK_ROOT/tools/bin && \
+  ln -sf $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+         $ANDROID_SDK_ROOT/tools/bin/sdkmanager && \
+  \
+  # install SDK components + NDK
+  $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+    "platform-tools" \
+    "platforms;android-34" \
+    "build-tools;36.0.0" \
+    "ndk;25.2.9519653" && \
+  yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses && \
+  \
+  # fix permissions
+  chown -R 1000:1000 $ANDROID_SDK_ROOT
 
-# Point Buildozer/p4a at the preinstalled NDK
+# point Buildozer at the baked-in NDK
 ENV ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653
 
 ###############################################################################
 # 1️⃣  Switch to unprivileged user & install Python deps / Buildozer
 ###############################################################################
 USER user
-ENV PATH=/home/user/.local/bin:$PATH
 
-RUN python3 -m pip install --upgrade pip setuptools wheel && \
-    python3 -m pip install --no-cache-dir buildozer==1.*
+RUN \
+  python3 -m pip install --upgrade pip setuptools wheel && \
+  python3 -m pip install --no-cache-dir buildozer==1.*
 
 ###############################################################################
-# 2️⃣  (Optional) quick smoke-test
+# 2️⃣  (Optional) quick smoke-test – comment out for speed
 ###############################################################################
-RUN buildozer --version && \
-    sdkmanager --list | grep -E "ndk;25\.2\.9519653"
+RUN \
+  buildozer --version && \
+  sdkmanager --list | grep -E "ndk;25\.2\.9519653"
