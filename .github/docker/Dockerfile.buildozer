@@ -1,56 +1,70 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Base image: Kivy team’s Buildozer runtime
+# ──────────────────────────────────────────────────────────────────────────────
 FROM ghcr.io/kivy/buildozer:latest
 
-#####################################################################
-# 0️⃣  prerequisites and SDK as root
-#####################################################################
+###############################################################################
+# 0️⃣  System prerequisites + Android SDK/NDK (run as root)
+###############################################################################
 USER root
 
-# 0a. tools we need
-RUN apt-get update -qq && \
+ENV ANDROID_SDK_ROOT=/opt/android-sdk \
+    PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+
+# One compact layer: tools → SDK cmdline-tools → licences → SDK packages → NDK
+RUN set -euo pipefail && \
+    # ----- minimal OS utilities -----
+    apt-get update -qq && \
     apt-get install -y --no-install-recommends curl unzip && \
-    rm -rf /var/lib/apt/lists/*
-
-# 0b. make /opt/ant writable
-RUN mkdir -p /opt/ant && chown -R 1000:1000 /opt/ant
-
-# 0c. download Google cmdline-tools and install them
-ENV ANDROID_SDK_ROOT=/opt/android-sdk
-
-RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
-    curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
-         -o /tmp/cli.zip && \
-    unzip -q /tmp/cli.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    rm -rf /var/lib/apt/lists/* && \
+    \
+    # ----- Android cmdline-tools (latest) -----
+    mkdir -p $ANDROID_SDK_ROOT/cmdline-tools && \
+    curl -sSL \
+      https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+      -o /tmp/cli.zip && \
+    unzip -q /tmp/cli.zip -d $ANDROID_SDK_ROOT/cmdline-tools && \
     rm /tmp/cli.zip && \
-    # move the *inner* folder only
-    mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools \
-       ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
+    mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools \
+       $ANDROID_SDK_ROOT/cmdline-tools/latest && \
     \
-    # ---------- create “tools/bin” compatibility symlink ----------
-    mkdir -p ${ANDROID_SDK_ROOT}/tools/bin && \
-    ln -s ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
-          ${ANDROID_SDK_ROOT}/tools/bin/sdkmanager && \
+    # legacy “tools/bin” shim so Buildozer can still call sdkmanager
+    ln -sf $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \
+            $ANDROID_SDK_ROOT/tools/bin/sdkmanager && \
     \
-    # ---------- accept licences & install the bits we need ----------
-    yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null && \
-    ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
-        "platform-tools" \
-        "platforms;android-34" \
-        "build-tools;36.0.0" && \
+    # ----- accept licences & install SDK pieces -----
+    yes | sdkmanager --licenses >/dev/null && \
+    sdkmanager \
+      "platform-tools" \
+      "platforms;android-34" \
+      "build-tools;36.0.0" \
+      "ndk;25.2.9519653" && \
     \
-    # hand SDK ownership to the unprivileged user
-    chown -R 1000:1000 ${ANDROID_SDK_ROOT}
+    # ----- tidy up permissions -----
+    chown -R 1000:1000 $ANDROID_SDK_ROOT
 
-#####################################################################
-# 1️⃣  switch to user and install Buildozer
-#####################################################################
+# Expose the NDK location to p4a / Buildozer
+ENV ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653
+
+###############################################################################
+# 1️⃣  Switch to unprivileged user & install Python deps / Buildozer
+###############################################################################
 USER user
-ENV PATH=/home/user/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
+ENV PATH=/home/user/.local/bin:$PATH
 
 RUN python3 -m pip install --upgrade pip setuptools wheel && \
     python3 -m pip install --no-cache-dir buildozer==1.*
 
-#####################################################################
-# 2️⃣  sanity check (optional)
-#####################################################################
+###############################################################################
+# 2️⃣  (Optional) quick smoke-test – comment out to shave a few seconds
+###############################################################################
 RUN buildozer --version && \
-    sdkmanager --list | grep -E "build-tools;36\.0\.0"
+    sdkmanager --list | grep -E "ndk;25\.2\.9519653"
+
+# Build context stays lean because:
+#   • everything SDK-related lives in one RUN layer
+#   • tmp artefacts are removed immediately
+#   • pip cache is discarded with --no-cache-dir
+#
+# With the NDK pre-baked you should no longer hit unzip exit-code 50
+# during CI runs, even on small EBS root volumes.
