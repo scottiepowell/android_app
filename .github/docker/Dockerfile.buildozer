@@ -3,6 +3,9 @@
 # ──────────────────────────────────────────────────────────────────────────────
 FROM ghcr.io/kivy/buildozer:latest
 
+# Use bash with pipefail enabled by default
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+
 ###############################################################################
 # 0️⃣  System prerequisites + Android SDK/NDK (run as root)
 ###############################################################################
@@ -12,7 +15,7 @@ ENV ANDROID_SDK_ROOT=/opt/android-sdk \
     PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH
 
 # One compact layer: tools → SDK cmdline-tools → licences → SDK packages → NDK
-RUN set -euo pipefail && \
+RUN bash -euo pipefail && \
     # ----- minimal OS utilities -----
     apt-get update -qq && \
     apt-get install -y --no-install-recommends curl unzip && \
