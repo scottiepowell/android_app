@@ -23,7 +23,7 @@ env:
 ################################################################################
 jobs:
   build-ec2:
-    if: false          # ← flip to true (or remove) when you want this to run
+    if: true          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
 
     outputs:
@@ -99,7 +99,7 @@ jobs:
   configure-ec2:
     if: true            # flip to true / remove to enable
     runs-on: ubuntu-latest
-    #needs: build-ec2
+    needs: build-ec2
     steps:
       - uses: actions/checkout@v3
 
@@ -192,11 +192,27 @@ jobs:
         env:
           IP: ${{ steps.ec2.outputs.instance_ip }}
         run: |
+          set -euo pipefail
+
+          # Ensure we have a place to copy to
           mkdir -p /tmp/apks
+
+          # Check remotely that at least one APK is present
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$IP << 'REMOTE'
+            shopt -s nullglob
+            files=(~/app/bin/*.apk)
+            if [ ${#files[@]} -eq 0 ]; then
+              echo "❌ No APK found in ~/app/bin" >&2
+              exit 1
+            else
+              echo "✅ Found APK(s): ${files[*]}"
+            fi
+          REMOTE
+
+          # Now copy them down
           scp -o StrictHostKeyChecking=no -i key.pem \
-              "ec2-user@$IP:/root/.local/share/python-for-android/dists/whats_in_the_box/outputs/apk/*" \
-              "ec2-user@$IP:~/app/bin/*.apk" \
-              /tmp/apks/
+            ec2-user@$IP:~/app/bin/*.apk \
+            /tmp/apks/
 
       # 4. Upload APK as artifact
       - name: Upload APK as Artifact
@@ -209,7 +225,7 @@ jobs:
 # 3️⃣  DESTROY EC2 ─────────────────────────────────────────────────────────────
 ################################################################################
   destroy-ec2:
-    if: false          # ← flip to true (or remove) when you want this to run
+    if: true          # ← flip to true (or remove) when you want this to run
     runs-on: ubuntu-latest
     needs: configure-ec2
 
