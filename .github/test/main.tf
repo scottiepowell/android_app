@@ -135,6 +135,11 @@ resource "aws_instance" "build" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.allow_ssh.id]
 
+   root_block_device {
+    volume_size = 30
+    volume_type = "gp2"   # general-purpose SSD, still free-tier eligible
+  }
+
   tags = {
     Name = "buildozer-host"
   }
