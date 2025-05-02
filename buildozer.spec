@@ -25,3 +25,4 @@ warn_on_root = 0
 p4a.install_build_tools = false
 p4a.install_ndk = false
 p4a.local_ndk   = $ANDROID_NDK_HOME
+environment = GRADLE_OPTS="--no-daemon"
